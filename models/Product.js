@@ -26,6 +26,28 @@ const productSchema = new mongoose.Schema(
             crewAmount: Number,
             maxSpeed: String,
         },
+        category: {
+            type: String,
+            required: true,
+            enum: [
+                "Fighter",
+                "Freighter",
+                "Shuttle",
+                "Speeder",
+                "Cruiser",
+                "Capital Ship",
+            ],
+        },
+        stockQuantity: {
+            type: Number,
+            required: true,
+            default: 0,
+        },
+        isActive: {
+            type: Boolean,
+            required: true,
+            default: true,
+        },
     },
     { timestamps: true }
 );

@@ -18,9 +18,9 @@ app.use(cors());
 app.use(express.json());
 
 // testing route
-// app.get("/", (req, res) => {
-//     res.send("Spacekrub API Running");
-// });
+app.get("/", (req, res) => {
+    res.send("Spacekrub API Running");
+});
 
 // Mount Routers
 app.use("/api/products", productRoutes);
