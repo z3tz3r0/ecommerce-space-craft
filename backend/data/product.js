@@ -168,7 +168,7 @@ for (let i = 0; i < numberOfProducts; i++) {
         price: getRandomInt(50, 2500) * 1000,
         category: getRandomElement(categories),
         stockQuantity: getRandomInt(0, 50),
-        imageUrl: `https://via.placeholder.com/300x200.png?text=${encodeURIComponent(
+        imageUrl: `https://www.placehold.co/300x200.png?text=${encodeURIComponent(
             name.substring(0, 15)
         )}`,
         specs: {

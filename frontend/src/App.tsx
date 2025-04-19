@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import Layout from "./assets/Layout";
+import ProductListPage from "./components/ProductListPage";
 
 export default function App() {
     return (
@@ -8,11 +9,7 @@ export default function App() {
                 {/* <Route index element={<HomePage />} /> */}
                 <Route index element={<div>Home page placeholder</div>} />
 
-                {/* <Route path="products" element={<ProductListPage />} /> */}
-                <Route
-                    path="products"
-                    element={<div>Product List page placeholder</div>}
-                />
+                <Route path="products" element={<ProductListPage />} />
 
                 {/* <Route path="products/:productId" element={<ProductDetailPage />} /> */}
                 <Route

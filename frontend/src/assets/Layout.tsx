@@ -1,7 +1,7 @@
 import { AppBar, Box, Container, Toolbar, Typography } from "@mui/material";
 import { Outlet } from "react-router-dom";
 
-const Layout = () => {
+const Layout: React.FC = () => {
     return (
         <Box
             sx={{
@@ -42,7 +42,7 @@ const Layout = () => {
                 <Container maxWidth="sm">
                     <Typography
                         variant="body2"
-                        color="text.secondary"
+                        color="textSecondary"
                         align="center"
                     >
                         {"© "}
