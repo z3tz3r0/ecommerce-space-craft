@@ -56,10 +56,10 @@ router.post("/", async (req, res) => {
             isActive,
         } = req.body;
 
-        if (!name || !description || !price || !category || !stockQuantity) {
+        if (!name || !description || !price || !category) {
             return res.status(400).json({
                 message:
-                    "Missing required field: name, description, price, category, stock quantity",
+                    "Missing required field: name, description, price, category",
             });
         }
 

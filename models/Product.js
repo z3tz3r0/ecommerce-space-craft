@@ -8,6 +8,8 @@ const productSchema = new mongoose.Schema(
             type: String,
             required: [true, "Please add a product name"],
             trim: true,
+            minLength: [3, "Product name must be at least 3 characters long."],
+            maxLength: [100, "Product name cannot exceed 100 characters."],
         },
         description: {
             type: String,
@@ -16,6 +18,7 @@ const productSchema = new mongoose.Schema(
         price: {
             type: Number,
             required: [true, "Please add a product price"],
+            min: [0, "Price cannot be lower than 0"],
         },
         imageUrl: {
             type: String,
@@ -29,23 +32,26 @@ const productSchema = new mongoose.Schema(
         category: {
             type: String,
             required: true,
-            enum: [
-                "Fighter",
-                "Freighter",
-                "Shuttle",
-                "Speeder",
-                "Cruiser",
-                "Capital Ship",
-            ],
+            enum: {
+                values: [
+                    "Fighter",
+                    "Freighter",
+                    "Shuttle",
+                    "Speeder",
+                    "Cruiser",
+                    "Capital Ship",
+                ],
+                message: "Invalid category {VALUE} is not supported.",
+            },
         },
         stockQuantity: {
             type: Number,
-            required: true,
+            required: [true, "Stock quantity must be provided."],
+            min: [0, "Stock quantity cannot be less than 0."],
             default: 0,
         },
         isActive: {
             type: Boolean,
-            required: true,
             default: true,
         },
     },

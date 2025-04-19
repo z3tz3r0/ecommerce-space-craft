@@ -5,7 +5,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "node --watch server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "seed": "node seeder.js",
+    "seed:destroy": "node seeder.js -d"
   },
   "keywords": [],
   "author": "",
