@@ -38,4 +38,59 @@ router.get("/:id", async (req, res) => {
     }
 });
 
+// @desc Create new product
+// @route POST /api/products/
+// @access Public (will be Admin only later)
+router.post("/", async (req, res) => {
+    console.log("DEBUG: Hit POST /api/products route handler");
+    console.log("DEBUG: Request body:", req.body);
+    try {
+        const {
+            name,
+            description,
+            price,
+            imageUrl,
+            specs,
+            category,
+            stockQuantity,
+            isActive,
+        } = req.body;
+
+        if (!name || !description || !price || !category || !stockQuantity) {
+            return res.status(400).json({
+                message:
+                    "Missing required field: name, description, price, category, stock quantity",
+            });
+        }
+
+        const newProduct = await Product.create({
+            name,
+            description,
+            price,
+            imageUrl,
+            specs,
+            category,
+            stockQuantity,
+            isActive,
+        });
+        console.log("DEBUG: Product created successfully: ", newProduct);
+        res.status(201).json(newProduct);
+    } catch (error) {
+        console.error(`Error creating product: ${error.message}`);
+
+        if (error.name === "ValidationError") {
+            const messages = Object.values(error.errors).map(
+                (val) => val.message
+            );
+            return res
+                .status(400)
+                .json({ message: "Validation Failed: ", errors: messages });
+        }
+
+        res.status(500).json({
+            message: "Server Error during product creation",
+        });
+    }
+});
+
 module.exports = router;
