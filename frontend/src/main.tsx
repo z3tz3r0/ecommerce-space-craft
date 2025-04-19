@@ -11,13 +11,17 @@ import "@fontsource/roboto/500.css"; // Medium
 import "@fontsource/roboto/700.css"; // Bold
 import { createTheme } from "@mui/material";
 
+import { BrowserRouter } from "react-router-dom";
+
 const theme = createTheme({});
 
 createRoot(document.getElementById("root")!).render(
     <StrictMode>
-        <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <App />
-        </ThemeProvider>
+        <BrowserRouter>
+            <ThemeProvider theme={theme}>
+                <CssBaseline />
+                <App />
+            </ThemeProvider>
+        </BrowserRouter>
     </StrictMode>
 );

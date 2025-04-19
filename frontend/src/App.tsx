@@ -1,7 +1,27 @@
+import { Route, Routes } from "react-router-dom";
+import Layout from "./assets/Layout";
+
 export default function App() {
     return (
-        <>
-            <h1>Spacecraft E-commerce Frontend</h1>
-        </>
+        <Routes>
+            <Route path="/" element={<Layout />}>
+                {/* <Route index element={<HomePage />} /> */}
+                <Route index element={<div>Home page placeholder</div>} />
+
+                {/* <Route path="products" element={<ProductListPage />} /> */}
+                <Route
+                    path="products"
+                    element={<div>Product List page placeholder</div>}
+                />
+
+                {/* <Route path="products/:productId" element={<ProductDetailPage />} /> */}
+                <Route
+                    path="products/:productId"
+                    element={<div>Product Detail Page placeholder</div>}
+                />
+            </Route>
+
+            {/* <Route path='/login' element={<LoginPage />} */}
+        </Routes>
     );
 }
