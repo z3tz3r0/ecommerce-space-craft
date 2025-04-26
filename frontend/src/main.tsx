@@ -12,6 +12,7 @@ import "@fontsource/roboto/700.css"; // Bold
 import { createTheme } from "@mui/material";
 
 import { BrowserRouter } from "react-router-dom";
+import { CartProvider } from "./context/CartContext.tsx";
 
 const theme = createTheme({});
 
@@ -19,8 +20,10 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <App />
+        <CartProvider>
+          <CssBaseline />
+          <App />
+        </CartProvider>
       </ThemeProvider>
     </BrowserRouter>
   </StrictMode>

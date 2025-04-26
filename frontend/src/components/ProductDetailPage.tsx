@@ -13,9 +13,11 @@ import {
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useCart } from "../context/CartContext";
 import { Product } from "../interfaces/Product";
 
 const ProductDetailPage: React.FC = () => {
+  const { addToCart } = useCart();
   const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
 
@@ -70,6 +72,7 @@ const ProductDetailPage: React.FC = () => {
 
   const handleAddToCart = () => {
     if (product) {
+      addToCart(product);
       console.log(`Adding ${product.name} to cart (To be done later)`);
     }
   };

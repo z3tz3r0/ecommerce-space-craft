@@ -1,7 +1,21 @@
-import { AppBar, Box, Container, Toolbar, Typography } from "@mui/material";
+import ShoppingCart from "@mui/icons-material/ShoppingCart";
+import {
+  AppBar,
+  Badge,
+  Box,
+  Container,
+  IconButton,
+  Toolbar,
+  Typography,
+} from "@mui/material";
 import { Outlet, Link as RouterLink } from "react-router-dom";
+import { useCart } from "../context/cartHooks";
 
 const Layout: React.FC = () => {
+  const { cartItems } = useCart();
+
+  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
     <Box
       sx={{
@@ -25,6 +39,16 @@ const Layout: React.FC = () => {
               Spacecraft Store
             </Typography>
           </RouterLink>
+          <IconButton
+            size="large"
+            aria-label={`show ${totalItems} item in cart`}
+            color="inherit"
+            // onClick={() => navigate('/cart')}
+          >
+            <Badge badgeContent={totalItems} color="error">
+              <ShoppingCart />
+            </Badge>
+          </IconButton>
         </Toolbar>
       </AppBar>
       {/* ------ Main Content Area ------ */}
