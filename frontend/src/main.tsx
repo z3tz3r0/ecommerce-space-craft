@@ -13,6 +13,7 @@ import { createTheme } from "@mui/material";
 
 import { BrowserRouter } from "react-router-dom";
 import { CartProvider } from "./context/CartContext.tsx";
+import { SnackbarProvider } from "./context/SnackBarContext.tsx";
 
 const theme = createTheme({});
 
@@ -20,10 +21,12 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <ThemeProvider theme={theme}>
-        <CartProvider>
-          <CssBaseline />
-          <App />
-        </CartProvider>
+        <SnackbarProvider>
+          <CartProvider>
+            <CssBaseline />
+            <App />
+          </CartProvider>
+        </SnackbarProvider>
       </ThemeProvider>
     </BrowserRouter>
   </StrictMode>

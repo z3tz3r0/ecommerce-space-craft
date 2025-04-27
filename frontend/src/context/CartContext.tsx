@@ -2,26 +2,33 @@ import { useState } from "react";
 import { CartItem, CartProviderProps } from "../interfaces/Cart";
 import { Product } from "../interfaces/Product";
 import { CartContext } from "./cartHooks";
+import { useSnackbar } from "./snackbarHooks";
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const { showSnackbar } = useSnackbar();
 
   const addToCart = (product: Product) => {
-    setCartItems((prevItem) => {
-      const existingItem = prevItem.find((item) => item.id === product._id);
-
+    let itemAdded = false;
+    setCartItems((prevItems) => {
+      const existingItem = prevItems.find((item) => item.id === product._id);
       if (existingItem) {
         const newQuantity = Math.min(
           existingItem.quantity + 1,
           product.stockQuantity
         );
-        return prevItem.map((item) =>
-          item.id === product._id ? { ...item, quantity: newQuantity } : item
-        );
+
+        if (newQuantity > existingItem.quantity) {
+          return prevItems.map((item) =>
+            item.id === product._id ? { ...item, quantity: newQuantity } : item
+          );
+        }
+        return prevItems;
       }
       if (product.stockQuantity > 0) {
+        itemAdded = true;
         return [
-          ...prevItem,
+          ...prevItems,
           {
             id: product._id,
             name: product.name,
@@ -33,28 +40,56 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         ];
       } else {
         console.warn("Attemped to add out-of-stock item: ", product.name);
-        return prevItem;
+        return prevItems;
       }
     });
     console.log("Cart after add: ", cartItems);
+
+    if (itemAdded) {
+      showSnackbar({
+        message: `${product.name} added to cart`,
+        severity: "success",
+      });
+    } else if (
+      product.stockQuantity <=
+      (cartItems.find((item) => item.id === product._id)?.quantity ?? 0)
+    ) {
+      showSnackbar({
+        message: `Max quantity for ${product.name} reached`,
+        severity: "warning",
+      });
+    }
   };
 
   const removeFromCart = (productId: string) => {
-    setCartItems((prevItems) =>
-      prevItems.filter((item) => item.id !== productId)
-    );
-    console.log("Cart after remove: ", cartItems);
+    const itemToRemove = cartItems.find((item) => item.id === productId);
+    if (itemToRemove) {
+      setCartItems((prevItems) =>
+        prevItems.filter((item) => item.id !== productId)
+      );
+      showSnackbar({
+        message: `${itemToRemove.name} removed from cart`,
+        severity: "info",
+      });
+    }
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
+    let quantityChanged = false;
     setCartItems((prevItems) => {
       const itemToUpdate = prevItems.find((item) => item.id === productId);
+      if (!itemToUpdate) return prevItems;
       const newQuantity = Math.max(
         1,
         Math.min(quantity, itemToUpdate?.stockQuantity || 1)
       );
 
+      if (newQuantity !== itemToUpdate.quantity) {
+        quantityChanged = true;
+      }
+
       if (quantity <= 0) {
+        quantityChanged = true;
         return prevItems.filter((item) => item.id !== productId);
       }
 
@@ -62,11 +97,15 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         item.id === productId ? { ...item, quantity: newQuantity } : item
       );
     });
+
+    if (quantityChanged) {
+      showSnackbar({ message: `Cart updated`, severity: `success` });
+    }
   };
 
   const clearCart = () => {
     setCartItems([]);
-    console.log("Cart cleared");
+    showSnackbar({ message: `Cart cleared`, severity: "warning" });
   };
 
   const value = {
