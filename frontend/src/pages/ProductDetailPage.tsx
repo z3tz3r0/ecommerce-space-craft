@@ -145,7 +145,6 @@ const ProductDetailPage: React.FC = () => {
                 currency: "USD",
                 minimumFractionDigits: 0,
               }).format(product.price)}
-              ;
             </Typography>
             <Divider sx={{ my: 2 }} />
 

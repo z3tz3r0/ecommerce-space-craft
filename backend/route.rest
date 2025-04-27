@@ -1,0 +1,105 @@
+# Variables (Adjust BASE_URL and PORT if your server runs elsewhere)
+@baseUrl = http://localhost:5000
+# Use a valid ObjectId from your database after creating one
+@productId = 68036113f2e7891d6ec272cb
+# Use another valid ObjectId for update/delete tests
+@productIdToUpdate = 68036113f2e7891d6ec272c6
+@productIdToDelete = 68036113f2e7891d6ec272cc
+
+###
+# @name GetAllProducts
+# Fetch all products
+GET {{baseUrl}}/api/products
+
+###
+# @name GetProductById
+# Fetch a single product by its ID
+# NOTE: Replace {{productId}} variable above with an ACTUAL ID from your database
+GET {{baseUrl}}/api/products/{{productId}}
+
+###
+# @name GetProductByInvalidIdFormat
+# Fetch a product with an invalid ID format (should return 404)
+GET {{baseUrl}}/api/products/invalid-id-format
+
+###
+# @name GetProductByNonExistentId
+# Fetch a product with a valid format ID that doesn't exist (should return 404)
+# NOTE: Use a valid ObjectId format that is unlikely to exist
+GET {{baseUrl}}/api/products/60c72b2f9b1e8a001c8e4d99
+
+###
+# @name CreateProduct
+# Create a new product
+POST {{baseUrl}}/api/products
+Content-Type: application/json
+
+{
+  "name": "Test Craft Mark IV",
+  "description": "A brand new test spacecraft with enhanced features.",
+  "price": 199999.99,
+  "imageUrl": "https://www.placehold.co/300x200.png?text=Test%20Craft%20Mark%20IV",
+  "specs": {
+    "manufacturer": "Test Corp",
+    "crewAmount": 5,
+    "maxSpeed": "Mach 10"
+  },
+  "category": "Freighter",
+  "stockQuantity": 15,
+  "isActive": true
+}
+
+###
+# @name CreateProductMissingRequiredField
+# Attempt to create a product missing a required field (e.g., price) - should fail (400)
+POST {{baseUrl}}/api/products
+Content-Type: application/json
+
+{
+  "name": "Incomplete Craft",
+  "description": "This craft is missing data.",
+  # "price": 999, // Price is missing
+  "category": "Transport",
+  "stockQuantity": 5
+}
+
+
+###
+# @name UpdateProduct
+# Update an existing product by ID
+# NOTE: Replace {{productIdToUpdate}} variable above with an ACTUAL ID from your database
+PUT {{baseUrl}}/api/products/{{productIdToUpdate}}
+Content-Type: application/json
+
+{
+  "name": "Updated Test Craft Mark IV",
+  "description": "An updated description for the test spacecraft.",
+  "price": 210000.00,
+  "stockQuantity": 12,
+  "isActive": false
+}
+
+###
+# @name UpdateNonExistentProduct
+# Attempt to update a product that doesn't exist (should return 404)
+# NOTE: Use a valid ObjectId format that is unlikely to exist
+PUT {{baseUrl}}/api/products/60c72b2f9b1e8a001c8e4d99
+Content-Type: application/json
+
+{
+  "name": "Ghost Craft",
+  "price": 100
+}
+
+###
+# @name DeleteProduct
+# Delete an existing product by ID
+# NOTE: Replace {{productIdToDelete}} variable above with an ACTUAL ID from your database
+DELETE {{baseUrl}}/api/products/{{productIdToDelete}}
+
+###
+# @name DeleteNonExistentProduct
+# Attempt to delete a product that doesn't exist (should return 404)
+# NOTE: Use a valid ObjectId format that is unlikely to exist
+DELETE {{baseUrl}}/api/products/60c72b2f9b1e8a001c8e4d99
+
