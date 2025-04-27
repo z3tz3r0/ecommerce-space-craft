@@ -17,7 +17,7 @@ const app = express();
 // using cors to specify
 const whiteList = [
   "http://localhost:5173",
-  "https://ecommerce-space-craft.vercel.app/",
+  "https://ecommerce-space-craft.vercel.app",
 ];
 const corsOptions = {
   origin: (origin, callback) => {
