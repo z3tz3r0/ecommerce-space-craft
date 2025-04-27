@@ -8,11 +8,12 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
-import { Outlet, Link as RouterLink } from "react-router-dom";
+import { Outlet, Link as RouterLink, useNavigate } from "react-router-dom";
 import { useCart } from "../context/cartHooks";
 
 const Layout: React.FC = () => {
   const { cartItems } = useCart();
+  const navigate = useNavigate();
 
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -43,7 +44,7 @@ const Layout: React.FC = () => {
             size="large"
             aria-label={`show ${totalItems} item in cart`}
             color="inherit"
-            // onClick={() => navigate('/cart')}
+            onClick={() => navigate("/cart")}
           >
             <Badge badgeContent={totalItems} color="error">
               <ShoppingCart />

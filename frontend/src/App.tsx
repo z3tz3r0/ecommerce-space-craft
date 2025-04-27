@@ -1,7 +1,8 @@
 import { Route, Routes } from "react-router-dom";
-import Layout from "./assets/Layout";
-import ProductDetailPage from "./components/ProductDetailPage";
-import ProductListPage from "./components/ProductListPage";
+import Layout from "./components/Layout";
+import CartPage from "./pages/CartPage";
+import ProductDetailPage from "./pages/ProductDetailPage";
+import ProductListPage from "./pages/ProductListPage";
 
 export default function App() {
   return (
@@ -13,10 +14,7 @@ export default function App() {
         <Route path="products" element={<ProductListPage />} />
 
         <Route path="products/:productId" element={<ProductDetailPage />} />
-        <Route
-          path="products/:productId"
-          element={<div>Product Detail Page placeholder</div>}
-        />
+        <Route path="cart" element={<CartPage />} />
       </Route>
 
       {/* <Route path='/login' element={<LoginPage />} */}

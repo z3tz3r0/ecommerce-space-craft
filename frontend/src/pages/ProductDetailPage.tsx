@@ -1,20 +1,19 @@
-import { AddShoppingCart } from "@mui/icons-material";
-import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  CircularProgress,
-  Container,
-  Divider,
-  Grid,
-  Paper,
-  Typography,
-} from "@mui/material";
+import AddShoppingCart from "@mui/icons-material/AddShoppingCart";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import Container from "@mui/material/Container";
+import Divider from "@mui/material/Divider";
+import Grid from "@mui/material/Grid";
+import Paper from "@mui/material/Paper";
+import Typography from "@mui/material/Typography";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useCart } from "../context/CartContext";
+import { useCart } from "../context/cartHooks";
 import { Product } from "../interfaces/Product";
+import { getProductById } from "../services/api";
 
 const ProductDetailPage: React.FC = () => {
   const { addToCart } = useCart();
@@ -38,36 +37,24 @@ const ProductDetailPage: React.FC = () => {
       setProduct(null);
 
       try {
-        const apiUrl = `${
-          import.meta.env.VITE_API_URL
-        }/api/products/${productId}`;
-        console.log(`Workspaceing product from: ${apiUrl}`);
-
-        const response = await fetch(apiUrl);
-
-        if (response.status === 404) {
-          throw new Error("Product not found");
-        }
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch product: ${response.statusText} (Status: ${response.status})`
-          );
-        }
-
-        const data: Product = await response.json();
+        console.log(`Workspacing product ${productId} via service...`);
+        const data: Product = await getProductById(productId!);
         setProduct(data);
       } catch (error: unknown) {
         console.error("Error fetching product: ", error);
         let message = "An unknown error occurred.";
         if (error instanceof Error) {
-          message = error.message;
+          message =
+            error.message === "Not Found" ? "Product not found" : error.message;
         }
         setError(message);
       } finally {
         setLoading(false);
       }
     };
-    fetchProduct();
+    if (productId) {
+      fetchProduct();
+    }
   }, [productId]);
 
   const handleAddToCart = () => {
