@@ -1,15 +1,8 @@
-import ShoppingCart from "@mui/icons-material/ShoppingCart";
-import {
-  AppBar,
-  Badge,
-  Box,
-  Container,
-  IconButton,
-  Toolbar,
-  Typography,
-} from "@mui/material";
-import { Outlet, Link as RouterLink, useNavigate } from "react-router-dom";
+import { Box, Container } from "@mui/material";
+import { Outlet, useNavigate } from "react-router-dom";
 import { useCart } from "../context/cartHooks";
+import Footer from "./Footer";
+import NavBar from "./NavBar";
 
 const Layout: React.FC = () => {
   const { cartItems } = useCart();
@@ -26,57 +19,15 @@ const Layout: React.FC = () => {
       }}
     >
       {/* ------ Top Navigation Bar ------ */}
-      <AppBar position="static">
-        <Toolbar variant="dense">
-          <RouterLink
-            to="/"
-            style={{
-              textDecoration: "none",
-              color: "inherit",
-              flexGrow: 1,
-            }}
-          >
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              Spacecraft Store
-            </Typography>
-          </RouterLink>
-          <IconButton
-            size="large"
-            aria-label={`show ${totalItems} item in cart`}
-            color="inherit"
-            onClick={() => navigate("/cart")}
-          >
-            <Badge badgeContent={totalItems} color="error">
-              <ShoppingCart />
-            </Badge>
-          </IconButton>
-        </Toolbar>
-      </AppBar>
+      <NavBar totalItems={totalItems} navigate={navigate} />
+
       {/* ------ Main Content Area ------ */}
       <Container component="main" sx={{ my: 4, flexGrow: 1 }}>
         <Outlet />
       </Container>
 
       {/* ------ Footer ------ */}
-      <Box
-        component="footer"
-        sx={{
-          py: 2,
-          mt: "auto",
-          bgcolor: (theme) =>
-            theme.palette.mode === "light"
-              ? theme.palette.grey[200]
-              : theme.palette.grey[800],
-        }}
-      >
-        <Container maxWidth="sm">
-          <Typography variant="body2" color="textSecondary" align="center">
-            {"© "}
-            {new Date().getFullYear()}
-            {" Spacecraft E-commerce. Blast Off! 🚀🧑‍🚀🌙"}
-          </Typography>
-        </Container>
-      </Box>
+      <Footer />
     </Box>
   );
 };
