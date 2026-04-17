@@ -1,5 +1,13 @@
-## Dependencies
-/node_modules
+# Binaries
+/bin/
+/tmp/
+*.test
+*.out
 
-## Environment Variable
+# Env
 .env
+.env.local
+
+# Coverage
+*.coverage
+coverage.out

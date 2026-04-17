@@ -1,129 +1,99 @@
-# Spacecraft E-commerce App
+# Spacecraft Store
 
-## Description
+A fun-project e-commerce app for browsing spacecraft. Being rebuilt from scratch in phases — Go backend, modern React frontend — after an earlier Express + MUI iteration.
 
-A full-stack e-commerce proof-of-concept application for Browse and managing a simulated inventory of spacecraft. Built primarily as a learning project over a weekend sprint (April 26-27, 2025), focusing on React, TypeScript, Material UI for the frontend, and Node.js/Express/MongoDB for the backend.
+## Status
 
-## Live Demo
+**Phase 0a — Backend foundation: ✓ deployed**
+The Go + Huma + Postgres backend is live on Render, seeded with 15 spacecraft, and wired up with CI, lefthook, and automatic migrations.
 
-- **Frontend (Vercel):** [https://ecommerce-space-craft.vercel.app](https://ecommerce-space-craft.vercel.app)
-- **Backend API Base (Render):** [https://spacecraft-api-z3tz3r0.onrender.com](https://spacecraft-api-z3tz3r0.onrender.com)
+**Phase 0b — Frontend foundation: next**
+FSD-layout React SPA on Vite + Bun, `HomePage` rendering "Loaded N products" via an OpenAPI-generated TypeScript client.
 
-## Features Implemented
+Remaining phases: catalog features → auth + persistent cart → checkout (Stripe test) + coupons → styling pass + spacecraft fun layer → engagement → admin.
+See `docs/superpowers/specs/2026-04-17-phase-0-foundation-design.md` for the full roadmap.
 
-- View a list of available spacecraft products from API.
-- View detailed information for a single spacecraft.
-- Add items to a client-side shopping cart.
-- View the shopping cart contents.
-- Update item quantities within the cart (respecting stock).
-- Remove individual items from the cart.
-- Clear the entire cart.
-- API CRUD operations for products (GET all, GET one, POST, PUT, DELETE).
-- Snackbar notifications for cart actions (Add, Remove, Update, Clear).
-- Basic responsive design using Material UI components.
-- Basic Homepage and Navigation.
+## Live backend
 
-## Tech Stack
+- **API base:** https://spacecraft-api.onrender.com
+- **Health:** https://spacecraft-api.onrender.com/health
+- **OpenAPI spec:** https://spacecraft-api.onrender.com/openapi.json
 
-- **Frontend:**
-  - Vite
-  - React v18+
-  - TypeScript
-  - Material UI (MUI) v5
-  - React Router v6
-  - Context API (for Cart & Snackbar)
-  - Fetch API
-  - `@fontsource/roboto`
-- **Backend:**
-  - Node.js
-  - Express
-  - Mongoose
-  - MongoDB Atlas (Cloud Database)
-  - `cors`
-  - `dotenv`
-- **Deployment:**
-  - Frontend: Vercel
-  - Backend: Render (Free Tier)
-- **Development:**
-  - Git / GitHub
-  - VS Code
-  - Postman/Insomnia (API testing)
-  - npm
+Free-tier Render spins down after ~15 min idle; the first request after sleep can take up to a minute.
 
-## Getting Started / Local Setup
+## Tech stack
+
+**Backend** — Go 1.25 · [Huma v2](https://huma.rocks) (HTTP + auto-generated OpenAPI) · [sqlc](https://sqlc.dev) (typed queries from SQL) · pgx/v5 · [goose](https://github.com/pressly/goose) (migrations) · `slog` (logging) · [testify](https://github.com/stretchr/testify) (tests) · Postgres on [Neon](https://neon.tech)
+
+**Infrastructure** — Docker multi-stage (Alpine runtime) · Render (free tier, auto-deploy on push) · GitHub Actions (lint + test + codegen-drift + build) · [Lefthook](https://github.com/evilmartians/lefthook) (Go pre-commit) · `golangci-lint`
+
+**Frontend** — arrives in Plan 0b: Bun · Vite · React 19 · TypeScript · Tailwind v4 · shadcn/ui · TanStack Query · openapi-typescript · Feature-Sliced Design
+
+## Local setup (backend)
 
 ### Prerequisites
 
-- Node.js (v18 or later recommended)
-- npm (usually comes with Node.js)
-- Git
-- MongoDB Atlas Account & Cluster (needed for the connection string)
+- Go 1.25+
+- A Neon Postgres database (https://neon.tech) — copy its `DATABASE_URL`
+- Optional dev tools (auto-installed on first `make` target): `sqlc`, `goose`, `golangci-lint`, `lefthook`
 
-### Installation & Running
+```bash
+go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+go install github.com/pressly/goose/v3/cmd/goose@latest
+go install github.com/evilmartians/lefthook@latest
+# golangci-lint: see https://golangci-lint.run/welcome/install/
+```
 
-1.  **Clone the repository:**
+### Run
 
-    ```bash
-    git clone https://github.com/z3tz3r0/ecommerce-space-craft.git
-    cd ecommerce-space-craft
-    ```
+```bash
+git clone https://github.com/z3tz3r0/ecommerce-space-craft.git
+cd ecommerce-space-craft
 
-2.  **Backend Setup:**
+# Create backend/.env (gitignored) from the template
+cp backend/.env.example backend/.env
+# Edit backend/.env — paste your Neon DATABASE_URL
 
-    ```bash
-    cd backend
-    npm install
-    ```
+make install       # go mod download
+make migrate-up    # apply migrations to Neon
+make seed          # insert 15 seed products
+make dev           # run the API on :8080
+```
 
-- Create a `.env` file in the `backend` directory.
-- Add your environment variables:
+Then:
 
-  ```dotenv
-  # Example backend/.env
-  PORT=5000
-  MONGO_URI=mongodb+srv://YOUR_USER:YOUR_PASSWORD@YOUR_CLUSTER/YOUR_MONGO_DATABASE?retryWrites=true&w=majority
-  # NODE_ENV=development (Optional for local)
-  ```
+```bash
+curl localhost:8080/health            # {"status":"ok"}
+curl localhost:8080/api/products      # 15 products
+curl localhost:8080/openapi.json      # full OpenAPI 3.1 spec
+```
 
-- Start the backend server:
-  ```bash
-  npm run dev
-  ```
+### Make targets
 
-3.  **Frontend Setup:**
+Run `make help` for the full list. Most-used:
 
-    ```bash
-    cd ../frontend # Or from root: cd frontend
-    npm install
-    ```
+| Target | Purpose |
+|---|---|
+| `make dev` | Run the API locally |
+| `make test` | `go test ./... -race` |
+| `make lint` | `golangci-lint run` |
+| `make codegen` | Regenerate sqlc + OpenAPI artifacts (committed to git, CI fails on drift) |
+| `make migrate-up` / `migrate-down` / `migrate-status` | goose migrations |
+| `make seed` / `seed-destroy` | populate / truncate the `products` table |
 
-- Create a `.env` file in the `frontend` directory.
-- Add the environment variable pointing to your _local_ backend:
-  ```dotenv
-  # frontend/.env
-  VITE_API_URL=http://localhost:5000
-  ```
-- Start the frontend development server:
-  ```bash
-  npm run dev
-  ```
-  _(Frontend should be running on http://localhost:5173 or similar)_
+## Deployment
 
-4.  Open your local frontend URL (e.g., `http://localhost:5173`) in your browser.
+**Render (backend).** Auto-deploys from the default branch. Config lives in `render.yaml` (Blueprint). Dockerfile runs `goose up` on container boot, then execs the API. Required env vars: `DATABASE_URL`, `CORS_ORIGINS`, `LOG_LEVEL`, `ENVIRONMENT`. Render injects `$PORT`.
 
-## API Endpoints (Backend)
+**Neon (database).** Single Postgres branch. Migrations applied automatically on every Render deploy.
 
-- `GET /api/products`: Fetches all products.
-- `GET /api/products/:id`: Fetches a single product by its ID.
-- `POST /api/products`: Creates a new product (expects product data in JSON body).
-- `PUT /api/products/:id`: Updates a product by its ID (expects updated data in JSON body).
-- `DELETE /api/products/:id`: Deletes a product by its ID.
+**CI.** GitHub Actions runs lint / test / codegen-drift / build on PRs touching `backend/`.
 
-## Known Issues / Future Ideas
+## Architecture
 
-- **(Deferred)** Direct access to frontend routes (e.g., `/products`, `/cart`) on the deployed Vercel site currently results in a 404 error. Requires SPA rewrite configuration on Vercel.
-- No user authentication or persistent carts.
-- No payment processing.
-- No admin interface for managing products via UI.
-- Basic loading and error state visuals.
-- Further UI/UX polish desired.
+- Backend follows a DDD-lite layout under `backend/internal/` — one directory per bounded context (Phase 0a ships just `catalog`) with a fixed file shape (`domain.go` / `service.go` / `repository.go` / `postgres.go` / `handler.go` / `errors.go` / `queries.sql` / `*_test.go`). sqlc output lives in a `db/` subpackage per context to avoid domain-type collisions.
+- `cmd/api/main.go` does nothing but wire config → logger → db pool → server → bounded contexts.
+- `cmd/openapi/main.go` dumps the OpenAPI spec to stdout without serving HTTP, which lets the (future) frontend codegen its typed client without a running backend.
+- `cmd/seed/main.go` populates the DB from `backend/data/products.json` via the same `catalog.Postgres` used by the API.
+
+Full design rationale and decision log in `docs/superpowers/specs/2026-04-17-phase-0-foundation-design.md`; Phase 0a execution plan in `docs/superpowers/plans/2026-04-17-phase-0a-backend-foundation.md`.

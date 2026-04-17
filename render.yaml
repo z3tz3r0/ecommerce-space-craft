@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: spacecraft-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    branch: phase-0a/backend-foundation
+    healthCheckPath: /health
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # set manually in dashboard — Neon connection string
+      - key: CORS_ORIGINS
+        value: http://localhost:5173
+      - key: LOG_LEVEL
+        value: info
+      - key: ENVIRONMENT
+        value: prod
