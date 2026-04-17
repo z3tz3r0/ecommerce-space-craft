@@ -1,0 +1,13 @@
+# Binaries
+/bin/
+/tmp/
+*.test
+*.out
+
+# Env
+.env
+.env.local
+
+# Coverage
+*.coverage
+coverage.out
