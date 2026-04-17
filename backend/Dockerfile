@@ -11,9 +11,10 @@ RUN go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api
 FROM golang:1.25-alpine AS goose
 RUN go install github.com/pressly/goose/v3/cmd/goose@v3.27.0
 
-# Runtime: distroless/base (includes /bin/sh — required for the chained entrypoint).
-# distroless/static does NOT include /bin/sh, which is why we do not use it here.
-FROM gcr.io/distroless/base-debian12:nonroot
+# Runtime: Alpine (~8MB) — distroless/base actually ships without /bin/sh, so
+# the chained entrypoint (goose up && exec api) needs a shell-bearing base.
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates
 WORKDIR /app
 COPY --from=build /out/api /app/api
 COPY --from=goose /go/bin/goose /usr/local/bin/goose
