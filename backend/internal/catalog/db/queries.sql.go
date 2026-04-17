@@ -3,7 +3,7 @@
 //   sqlc v1.30.0
 // source: queries.sql
 
-package catalog
+package catalogdb
 
 import (
 	"context"
