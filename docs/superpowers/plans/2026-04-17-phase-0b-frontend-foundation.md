@@ -260,12 +260,12 @@ Notes:
 - [ ] **Step 2: Install dev dependencies**
 
 ```bash
-bun add -d tailwindcss @tailwindcss/vite @biomejs/biome steiger @feature-sliced/steiger-plugin-fsd openapi-typescript vitest @vitest/ui jsdom @testing-library/react @testing-library/jest-dom @testing-library/user-event @types/node
+bun add -d tailwindcss @tailwindcss/vite @biomejs/biome steiger @feature-sliced/steiger-plugin openapi-typescript vitest @vitest/ui jsdom @testing-library/react @testing-library/jest-dom @testing-library/user-event @types/node
 ```
 
 Notes:
 - `@tailwindcss/vite` is the Tailwind v4 Vite plugin.
-- `steiger` + `@feature-sliced/steiger-plugin-fsd` enforce FSD boundaries.
+- `steiger` + `@feature-sliced/steiger-plugin` enforce FSD boundaries.
 - `@types/node` lets `vite.config.ts` use `path` / `fileURLToPath` with typed signatures.
 
 - [ ] **Step 3: Verify `package.json` lists the new deps**
@@ -1306,7 +1306,7 @@ Full file:
 
 ```ts
 import { defineConfig } from "steiger"
-import fsd from "@feature-sliced/steiger-plugin-fsd"
+import fsd from "@feature-sliced/steiger-plugin"
 
 export default defineConfig([
   ...fsd.configs.recommended,
