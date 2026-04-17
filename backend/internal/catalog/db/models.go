@@ -14,7 +14,7 @@ type Product struct {
 	ID            uuid.UUID
 	Name          string
 	Description   string
-	PriceCents    int32
+	PriceCents    int64
 	ImageUrl      *string
 	Manufacturer  *string
 	CrewAmount    *int32

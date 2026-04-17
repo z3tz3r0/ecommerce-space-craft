@@ -37,7 +37,7 @@ type Product struct {
 	ID            uuid.UUID `json:"id"`
 	Name          string    `json:"name"`
 	Description   string    `json:"description"`
-	PriceCents    int32     `json:"priceCents"`
+	PriceCents    int64     `json:"priceCents"`
 	ImageURL      *string   `json:"imageUrl,omitempty"`
 	Manufacturer  *string   `json:"manufacturer,omitempty"`
 	CrewAmount    *int32    `json:"crewAmount,omitempty"`

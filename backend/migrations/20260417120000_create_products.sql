@@ -5,7 +5,7 @@ CREATE TABLE products (
     id              uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
     name            varchar(100)  NOT NULL CHECK (length(name) >= 3),
     description     text          NOT NULL,
-    price_cents     integer       NOT NULL CHECK (price_cents >= 0),
+    price_cents     bigint        NOT NULL CHECK (price_cents >= 0),
     image_url       text,
     manufacturer    text,
     crew_amount     integer       CHECK (crew_amount IS NULL OR crew_amount >= 0),

@@ -41,6 +41,64 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 	return i, err
 }
 
+const insertProduct = `-- name: InsertProduct :one
+INSERT INTO products (
+    name, description, price_cents, image_url,
+    manufacturer, crew_amount, max_speed, category,
+    stock_quantity, is_active
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+)
+RETURNING id, name, description, price_cents, image_url,
+    manufacturer, crew_amount, max_speed, category,
+    stock_quantity, is_active, created_at, updated_at
+`
+
+type InsertProductParams struct {
+	Name          string
+	Description   string
+	PriceCents    int64
+	ImageUrl      *string
+	Manufacturer  *string
+	CrewAmount    *int32
+	MaxSpeed      *string
+	Category      string
+	StockQuantity int32
+	IsActive      bool
+}
+
+func (q *Queries) InsertProduct(ctx context.Context, arg InsertProductParams) (Product, error) {
+	row := q.db.QueryRow(ctx, insertProduct,
+		arg.Name,
+		arg.Description,
+		arg.PriceCents,
+		arg.ImageUrl,
+		arg.Manufacturer,
+		arg.CrewAmount,
+		arg.MaxSpeed,
+		arg.Category,
+		arg.StockQuantity,
+		arg.IsActive,
+	)
+	var i Product
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.PriceCents,
+		&i.ImageUrl,
+		&i.Manufacturer,
+		&i.CrewAmount,
+		&i.MaxSpeed,
+		&i.Category,
+		&i.StockQuantity,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listActiveProducts = `-- name: ListActiveProducts :many
 SELECT
     id, name, description, price_cents, image_url,
@@ -83,4 +141,13 @@ func (q *Queries) ListActiveProducts(ctx context.Context) ([]Product, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const truncateProducts = `-- name: TruncateProducts :exec
+TRUNCATE products
+`
+
+func (q *Queries) TruncateProducts(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, truncateProducts)
+	return err
 }

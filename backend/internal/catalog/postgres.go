@@ -47,6 +47,50 @@ func (p *Postgres) ListActive(ctx context.Context) ([]Product, error) {
 	return out, nil
 }
 
+// CreateInput is the shape required to insert a new Product.
+type CreateInput struct {
+	Name          string
+	Description   string
+	PriceCents    int64
+	ImageURL      *string
+	Manufacturer  *string
+	CrewAmount    *int32
+	MaxSpeed      *string
+	Category      Category
+	StockQuantity int32
+	IsActive      bool
+}
+
+// Create inserts a new Product and returns the persisted row. This is used by
+// the seeder and (later) the admin UI — it is intentionally NOT part of the
+// read-only Repository interface consumed by Service.
+func (p *Postgres) Create(ctx context.Context, in CreateInput) (Product, error) {
+	row, err := p.q.InsertProduct(ctx, catalogdb.InsertProductParams{
+		Name:          in.Name,
+		Description:   in.Description,
+		PriceCents:    in.PriceCents,
+		ImageUrl:      in.ImageURL,
+		Manufacturer:  in.Manufacturer,
+		CrewAmount:    in.CrewAmount,
+		MaxSpeed:      in.MaxSpeed,
+		Category:      string(in.Category),
+		StockQuantity: in.StockQuantity,
+		IsActive:      in.IsActive,
+	})
+	if err != nil {
+		return Product{}, fmt.Errorf("postgres: insert product: %w", err)
+	}
+	return rowToProduct(row), nil
+}
+
+// DeleteAll truncates the products table. Seeder-only helper.
+func (p *Postgres) DeleteAll(ctx context.Context) error {
+	if err := p.q.TruncateProducts(ctx); err != nil {
+		return fmt.Errorf("postgres: truncate products: %w", err)
+	}
+	return nil
+}
+
 // rowToProduct translates the sqlc row type into the domain Product.
 func rowToProduct(r catalogdb.Product) Product {
 	return Product{
