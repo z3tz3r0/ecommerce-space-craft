@@ -1,0 +1,9 @@
+pre-commit:
+  parallel: true
+  commands:
+    go-fmt:
+      glob: "backend/**/*.go"
+      run: cd backend && gofmt -l {staged_files} | (! grep .)
+    go-lint:
+      glob: "backend/**/*.go"
+      run: cd backend && golangci-lint run --new-from-rev=HEAD~ ./...
