@@ -1,0 +1,76 @@
+name: backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "Makefile"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "Makefile"
+      - ".github/workflows/backend.yml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: backend/go.sum
+      - name: gofmt
+        run: |
+          cd backend
+          test -z "$(gofmt -l .)"
+      - name: go vet
+        run: cd backend && go vet ./...
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.62.0
+          working-directory: backend
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: backend/go.sum
+      - run: cd backend && go test ./... -race -count=1
+
+  codegen-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: backend/go.sum
+      - name: install sqlc
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+      - name: regenerate sqlc
+        run: cd backend && sqlc generate
+      - name: regenerate openapi
+        run: cd backend && go run ./cmd/openapi > openapi.json
+      - name: verify no drift
+        run: |
+          git diff --exit-code -- \
+            backend/internal/catalog/db/db.go \
+            backend/internal/catalog/db/models.go \
+            backend/internal/catalog/db/queries.sql.go \
+            backend/openapi.json
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: backend/go.sum
+      - run: cd backend && go build ./...
