@@ -1,6 +1,7 @@
+version: "2"
+
 run:
   timeout: 3m
-  tests: true
 
 linters:
   enable:
@@ -9,19 +10,21 @@ linters:
     - staticcheck
     - ineffassign
     - unused
-    - gofmt
-    - goimports
     - misspell
     - unconvert
     - bodyclose
     - errorlint
+  exclusions:
+    paths:
+      - "internal/catalog/db/db.go"
+      - "internal/catalog/db/models.go"
+      - "internal/catalog/db/queries.sql.go"
+    rules:
+      - path: "_test\\.go$"
+        linters:
+          - errcheck
 
-issues:
-  exclude-files:
-    - "internal/catalog/db/db.go"
-    - "internal/catalog/db/models.go"
-    - "internal/catalog/db/queries.sql.go"
-  exclude-rules:
-    - path: "_test\\.go$"
-      linters:
-        - errcheck
+formatters:
+  enable:
+    - gofmt
+    - goimports
