@@ -32,10 +32,22 @@ func (p *Postgres) GetByID(ctx context.Context, id uuid.UUID) (Product, error) {
 		}
 		return Product{}, fmt.Errorf("postgres: get product: %w", err)
 	}
-	return rowToProduct(row.ID, row.Name, row.Description, row.PriceCents,
-		row.ImageUrl, row.Manufacturer, row.CrewAmount, row.MaxSpeed,
-		row.Category, row.StockQuantity, row.IsActive, row.IsFeatured,
-		row.CreatedAt, row.UpdatedAt), nil
+	return rowToProduct(productRow{
+		id:            row.ID,
+		name:          row.Name,
+		description:   row.Description,
+		priceCents:    row.PriceCents,
+		imageUrl:      row.ImageUrl,
+		manufacturer:  row.Manufacturer,
+		crewAmount:    row.CrewAmount,
+		maxSpeed:      row.MaxSpeed,
+		category:      row.Category,
+		stockQuantity: row.StockQuantity,
+		isActive:      row.IsActive,
+		isFeatured:    row.IsFeatured,
+		createdAt:     row.CreatedAt,
+		updatedAt:     row.UpdatedAt,
+	}), nil
 }
 
 // ListActive returns every active product ordered by created_at DESC.
@@ -46,10 +58,22 @@ func (p *Postgres) ListActive(ctx context.Context) ([]Product, error) {
 	}
 	out := make([]Product, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, rowToProduct(r.ID, r.Name, r.Description, r.PriceCents,
-			r.ImageUrl, r.Manufacturer, r.CrewAmount, r.MaxSpeed,
-			r.Category, r.StockQuantity, r.IsActive, r.IsFeatured,
-			r.CreatedAt, r.UpdatedAt))
+		out = append(out, rowToProduct(productRow{
+			id:            r.ID,
+			name:          r.Name,
+			description:   r.Description,
+			priceCents:    r.PriceCents,
+			imageUrl:      r.ImageUrl,
+			manufacturer:  r.Manufacturer,
+			crewAmount:    r.CrewAmount,
+			maxSpeed:      r.MaxSpeed,
+			category:      r.Category,
+			stockQuantity: r.StockQuantity,
+			isActive:      r.IsActive,
+			isFeatured:    r.IsFeatured,
+			createdAt:     r.CreatedAt,
+			updatedAt:     r.UpdatedAt,
+		}))
 	}
 	return out, nil
 }
@@ -89,10 +113,22 @@ func (p *Postgres) Create(ctx context.Context, in CreateInput) (Product, error) 
 	if err != nil {
 		return Product{}, fmt.Errorf("postgres: insert product: %w", err)
 	}
-	return rowToProduct(row.ID, row.Name, row.Description, row.PriceCents,
-		row.ImageUrl, row.Manufacturer, row.CrewAmount, row.MaxSpeed,
-		row.Category, row.StockQuantity, row.IsActive, row.IsFeatured,
-		row.CreatedAt, row.UpdatedAt), nil
+	return rowToProduct(productRow{
+		id:            row.ID,
+		name:          row.Name,
+		description:   row.Description,
+		priceCents:    row.PriceCents,
+		imageUrl:      row.ImageUrl,
+		manufacturer:  row.Manufacturer,
+		crewAmount:    row.CrewAmount,
+		maxSpeed:      row.MaxSpeed,
+		category:      row.Category,
+		stockQuantity: row.StockQuantity,
+		isActive:      row.IsActive,
+		isFeatured:    row.IsFeatured,
+		createdAt:     row.CreatedAt,
+		updatedAt:     row.UpdatedAt,
+	}), nil
 }
 
 // DeleteAll truncates the products table. Seeder-only helper.
@@ -103,40 +139,43 @@ func (p *Postgres) DeleteAll(ctx context.Context) error {
 	return nil
 }
 
-// rowToProduct translates individual column values into the domain Product.
-// It accepts fields explicitly so it can serve all sqlc per-query row types
-// (GetProductByIDRow, ListActiveProductsRow, InsertProductRow, etc.) without
-// requiring a separate converter for each generated struct.
-func rowToProduct(
-	id uuid.UUID,
-	name string,
-	description string,
-	priceCents int64,
-	imageUrl *string,
-	manufacturer *string,
-	crewAmount *int32,
-	maxSpeed *string,
-	category string,
-	stockQuantity int32,
-	isActive bool,
-	isFeatured bool,
-	createdAt time.Time,
-	updatedAt time.Time,
-) Product {
+// productRow is a package-private intermediary that every sqlc per-query row
+// type maps into before being converted to the domain Product. Named-field
+// assignment at every call site eliminates the positional-argument landmine
+// that would arise from boolean/string args of identical types.
+type productRow struct {
+	id            uuid.UUID
+	name          string
+	description   string
+	priceCents    int64
+	imageUrl      *string
+	manufacturer  *string
+	crewAmount    *int32
+	maxSpeed      *string
+	category      string
+	stockQuantity int32
+	isActive      bool
+	isFeatured    bool
+	createdAt     time.Time
+	updatedAt     time.Time
+}
+
+// rowToProduct translates a productRow intermediary into the domain Product.
+func rowToProduct(r productRow) Product {
 	return Product{
-		ID:            id,
-		Name:          name,
-		Description:   description,
-		PriceCents:    priceCents,
-		ImageURL:      imageUrl,
-		Manufacturer:  manufacturer,
-		CrewAmount:    crewAmount,
-		MaxSpeed:      maxSpeed,
-		Category:      Category(category),
-		StockQuantity: stockQuantity,
-		IsActive:      isActive,
-		IsFeatured:    isFeatured,
-		CreatedAt:     createdAt,
-		UpdatedAt:     updatedAt,
+		ID:            r.id,
+		Name:          r.name,
+		Description:   r.description,
+		PriceCents:    r.priceCents,
+		ImageURL:      r.imageUrl,
+		Manufacturer:  r.manufacturer,
+		CrewAmount:    r.crewAmount,
+		MaxSpeed:      r.maxSpeed,
+		Category:      Category(r.category),
+		StockQuantity: r.stockQuantity,
+		IsActive:      r.isActive,
+		IsFeatured:    r.isFeatured,
+		CreatedAt:     r.createdAt,
+		UpdatedAt:     r.updatedAt,
 	}
 }
