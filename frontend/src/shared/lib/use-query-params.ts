@@ -7,15 +7,20 @@ export function useQueryParam(key: string) {
 
   const setValue = useCallback(
     (next: string | null) => {
-      const nextParams = new URLSearchParams(params)
-      if (next === null || next === "") {
-        nextParams.delete(key)
-      } else {
-        nextParams.set(key, next)
-      }
-      setParams(nextParams, { replace: true })
+      setParams(
+        (prev) => {
+          const nextParams = new URLSearchParams(prev)
+          if (next === null || next === "") {
+            nextParams.delete(key)
+          } else {
+            nextParams.set(key, next)
+          }
+          return nextParams
+        },
+        { replace: true },
+      )
     },
-    [key, params, setParams],
+    [key, setParams],
   )
 
   return [value, setValue] as const
@@ -27,14 +32,19 @@ export function useQueryParamList(key: string) {
 
   const setValues = useCallback(
     (next: string[]) => {
-      const nextParams = new URLSearchParams(params)
-      nextParams.delete(key)
-      for (const v of next) {
-        nextParams.append(key, v)
-      }
-      setParams(nextParams, { replace: true })
+      setParams(
+        (prev) => {
+          const nextParams = new URLSearchParams(prev)
+          nextParams.delete(key)
+          for (const v of next) {
+            nextParams.append(key, v)
+          }
+          return nextParams
+        },
+        { replace: true },
+      )
     },
-    [key, params, setParams],
+    [key, setParams],
   )
 
   return [values, setValues] as const
