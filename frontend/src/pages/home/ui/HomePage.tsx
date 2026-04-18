@@ -1,21 +1,13 @@
-import { useProducts } from "@/entities/product"
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
+import { FeaturedSection } from "@/widgets/featured-section"
 
 export function HomePage() {
-  const { data, isLoading, error } = useProducts()
-
   return (
-    <main className="p-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Spacecraft Store — Phase 0 Demo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading && <p>Loading products…</p>}
-          {error && <p>Error: {error.message}</p>}
-          {data && <p>Loaded {data.length} products</p>}
-        </CardContent>
-      </Card>
+    <main className="flex flex-col gap-12 p-8">
+      <section className="flex flex-col gap-4">
+        <h1>Spacecraft Store</h1>
+        <p>Browse our catalog of starfighters, freighters, and more.</p>
+      </section>
+      <FeaturedSection />
     </main>
   )
 }
