@@ -35,7 +35,12 @@ export default defineConfig([
   {
     // Widget slices keep implementation files flat in the slice root rather
     // than inside segment dirs — suppress until Task 10 reorganises if needed.
-    files: ["src/widgets/product-card/**", "src/widgets/product-grid/**"],
+    files: [
+      "src/widgets/product-card/**",
+      "src/widgets/product-grid/**",
+      "src/widgets/filter-sidebar/**",
+      "src/widgets/featured-section/**",
+    ],
     rules: { "fsd/no-segmentless-slices": "off" },
   },
 ])
