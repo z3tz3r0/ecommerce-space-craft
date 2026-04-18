@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+/*
+ * Theme tokens (colors, typography, radii, motion) are intentionally empty in
+ * Phase 0. The first styling pass happens in Phase 4.
+ * @theme block goes here when the styling pass begins.
+ */
