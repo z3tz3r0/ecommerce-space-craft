@@ -38,3 +38,25 @@ func (s *Service) ListActive(ctx context.Context) ([]Product, error) {
 	}
 	return ps, nil
 }
+
+// Featured limits.
+const (
+	defaultFeaturedLimit int32 = 12
+	maxFeaturedLimit     int32 = 24
+)
+
+// ListFeatured returns featured active products, capped to `limit` items.
+// A non-positive limit becomes the default (12); a too-large limit is clamped to 24.
+func (s *Service) ListFeatured(ctx context.Context, limit int32) ([]Product, error) {
+	if limit <= 0 {
+		limit = defaultFeaturedLimit
+	}
+	if limit > maxFeaturedLimit {
+		limit = maxFeaturedLimit
+	}
+	ps, err := s.repo.ListFeatured(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("catalog: list featured: %w", err)
+	}
+	return ps, nil
+}

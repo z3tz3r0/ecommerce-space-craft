@@ -13,8 +13,9 @@ import (
 
 // mockRepo is a hand-rolled test double. No mocking library needed for two methods.
 type mockRepo struct {
-	getByIDFn    func(ctx context.Context, id uuid.UUID) (catalog.Product, error)
-	listActiveFn func(ctx context.Context) ([]catalog.Product, error)
+	getByIDFn      func(ctx context.Context, id uuid.UUID) (catalog.Product, error)
+	listActiveFn   func(ctx context.Context) ([]catalog.Product, error)
+	listFeaturedFn func(ctx context.Context, limit int32) ([]catalog.Product, error)
 }
 
 func (m mockRepo) GetByID(ctx context.Context, id uuid.UUID) (catalog.Product, error) {
@@ -23,6 +24,10 @@ func (m mockRepo) GetByID(ctx context.Context, id uuid.UUID) (catalog.Product, e
 
 func (m mockRepo) ListActive(ctx context.Context) ([]catalog.Product, error) {
 	return m.listActiveFn(ctx)
+}
+
+func (m mockRepo) ListFeatured(ctx context.Context, limit int32) ([]catalog.Product, error) {
+	return m.listFeaturedFn(ctx, limit)
 }
 
 func TestService_GetByID_ValidID_ReturnsProduct(t *testing.T) {
@@ -92,4 +97,78 @@ func TestService_ListActive_ReturnsRepoResult(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 2)
 	require.Equal(t, want[0].Name, got[0].Name)
+}
+
+func TestService_ListFeatured_DefaultLimit_When_LimitZero(t *testing.T) {
+	var captured int32
+	repo := mockRepo{
+		listFeaturedFn: func(_ context.Context, limit int32) ([]catalog.Product, error) {
+			captured = limit
+			return nil, nil
+		},
+	}
+	svc := catalog.NewService(repo)
+
+	_, err := svc.ListFeatured(context.Background(), 0)
+	require.NoError(t, err)
+	require.Equal(t, int32(12), captured)
+}
+
+func TestService_ListFeatured_DefaultLimit_When_LimitNegative(t *testing.T) {
+	var captured int32
+	repo := mockRepo{
+		listFeaturedFn: func(_ context.Context, limit int32) ([]catalog.Product, error) {
+			captured = limit
+			return nil, nil
+		},
+	}
+	svc := catalog.NewService(repo)
+
+	_, err := svc.ListFeatured(context.Background(), -5)
+	require.NoError(t, err)
+	require.Equal(t, int32(12), captured)
+}
+
+func TestService_ListFeatured_HonoursCustomLimit(t *testing.T) {
+	var captured int32
+	repo := mockRepo{
+		listFeaturedFn: func(_ context.Context, limit int32) ([]catalog.Product, error) {
+			captured = limit
+			return nil, nil
+		},
+	}
+	svc := catalog.NewService(repo)
+
+	_, err := svc.ListFeatured(context.Background(), 7)
+	require.NoError(t, err)
+	require.Equal(t, int32(7), captured)
+}
+
+func TestService_ListFeatured_ClampsLimitToMax(t *testing.T) {
+	var captured int32
+	repo := mockRepo{
+		listFeaturedFn: func(_ context.Context, limit int32) ([]catalog.Product, error) {
+			captured = limit
+			return nil, nil
+		},
+	}
+	svc := catalog.NewService(repo)
+
+	_, err := svc.ListFeatured(context.Background(), 100)
+	require.NoError(t, err)
+	require.Equal(t, int32(24), captured)
+}
+
+func TestService_ListFeatured_PropagatesRepoError(t *testing.T) {
+	boom := errors.New("db exploded")
+	repo := mockRepo{
+		listFeaturedFn: func(_ context.Context, _ int32) ([]catalog.Product, error) {
+			return nil, boom
+		},
+	}
+	svc := catalog.NewService(repo)
+
+	_, err := svc.ListFeatured(context.Background(), 5)
+	require.Error(t, err)
+	require.ErrorIs(t, err, boom)
 }

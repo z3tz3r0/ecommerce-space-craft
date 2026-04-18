@@ -46,3 +46,7 @@ func (nopRepo) GetByID(_ context.Context, _ uuid.UUID) (catalog.Product, error) 
 func (nopRepo) ListActive(_ context.Context) ([]catalog.Product, error) {
 	return nil, nil
 }
+
+func (nopRepo) ListFeatured(_ context.Context, _ int32) ([]catalog.Product, error) {
+	return nil, nil
+}

@@ -78,6 +78,35 @@ func (p *Postgres) ListActive(ctx context.Context) ([]Product, error) {
 	return out, nil
 }
 
+// ListFeatured returns at most `limit` featured + active products,
+// ordered by created_at DESC.
+func (p *Postgres) ListFeatured(ctx context.Context, limit int32) ([]Product, error) {
+	rows, err := p.q.ListFeaturedProducts(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: list featured: %w", err)
+	}
+	out := make([]Product, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, rowToProduct(productRow{
+			id:            r.ID,
+			name:          r.Name,
+			description:   r.Description,
+			priceCents:    r.PriceCents,
+			imageUrl:      r.ImageUrl,
+			manufacturer:  r.Manufacturer,
+			crewAmount:    r.CrewAmount,
+			maxSpeed:      r.MaxSpeed,
+			category:      r.Category,
+			stockQuantity: r.StockQuantity,
+			isActive:      r.IsActive,
+			isFeatured:    r.IsFeatured,
+			createdAt:     r.CreatedAt,
+			updatedAt:     r.UpdatedAt,
+		}))
+	}
+	return out, nil
+}
+
 // CreateInput is the shape required to insert a new Product.
 type CreateInput struct {
 	Name          string
