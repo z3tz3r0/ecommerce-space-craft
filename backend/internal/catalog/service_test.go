@@ -13,8 +13,9 @@ import (
 
 // mockRepo is a hand-rolled test double. No mocking library needed for two methods.
 type mockRepo struct {
-	getByIDFn    func(ctx context.Context, id uuid.UUID) (catalog.Product, error)
-	listActiveFn func(ctx context.Context) ([]catalog.Product, error)
+	getByIDFn      func(ctx context.Context, id uuid.UUID) (catalog.Product, error)
+	listActiveFn   func(ctx context.Context) ([]catalog.Product, error)
+	listFeaturedFn func(ctx context.Context, limit int32) ([]catalog.Product, error)
 }
 
 func (m mockRepo) GetByID(ctx context.Context, id uuid.UUID) (catalog.Product, error) {
@@ -23,6 +24,10 @@ func (m mockRepo) GetByID(ctx context.Context, id uuid.UUID) (catalog.Product, e
 
 func (m mockRepo) ListActive(ctx context.Context) ([]catalog.Product, error) {
 	return m.listActiveFn(ctx)
+}
+
+func (m mockRepo) ListFeatured(ctx context.Context, limit int32) ([]catalog.Product, error) {
+	return m.listFeaturedFn(ctx, limit)
 }
 
 func TestService_GetByID_ValidID_ReturnsProduct(t *testing.T) {
@@ -92,4 +97,48 @@ func TestService_ListActive_ReturnsRepoResult(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 2)
 	require.Equal(t, want[0].Name, got[0].Name)
+}
+
+func TestService_ListFeatured_LimitClamping(t *testing.T) {
+	cases := []struct {
+		name     string
+		in       int32
+		wantSent int32
+	}{
+		{"zero becomes default", 0, 12},
+		{"negative becomes default", -5, 12},
+		{"min valid passes through", 1, 1},
+		{"custom in range", 7, 7},
+		{"boundary max passes through", 24, 24},
+		{"over max clamps to 24", 25, 24},
+		{"large clamps to 24", 100, 24},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var captured int32
+			svc := catalog.NewService(mockRepo{
+				listFeaturedFn: func(_ context.Context, limit int32) ([]catalog.Product, error) {
+					captured = limit
+					return nil, nil
+				},
+			})
+			_, err := svc.ListFeatured(context.Background(), tc.in)
+			require.NoError(t, err)
+			require.Equal(t, tc.wantSent, captured)
+		})
+	}
+}
+
+func TestService_ListFeatured_PropagatesRepoError(t *testing.T) {
+	boom := errors.New("db exploded")
+	repo := mockRepo{
+		listFeaturedFn: func(_ context.Context, _ int32) ([]catalog.Product, error) {
+			return nil, boom
+		},
+	}
+	svc := catalog.NewService(repo)
+
+	_, err := svc.ListFeatured(context.Background(), 5)
+	require.Error(t, err)
+	require.ErrorIs(t, err, boom)
 }

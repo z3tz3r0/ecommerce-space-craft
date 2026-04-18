@@ -24,4 +24,5 @@ type Product struct {
 	IsActive      bool
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	IsFeatured    bool
 }

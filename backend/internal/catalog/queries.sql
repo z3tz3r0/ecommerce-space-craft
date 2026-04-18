@@ -2,7 +2,7 @@
 SELECT
     id, name, description, price_cents, image_url,
     manufacturer, crew_amount, max_speed, category,
-    stock_quantity, is_active, created_at, updated_at
+    stock_quantity, is_active, is_featured, created_at, updated_at
 FROM products
 WHERE id = $1 AND is_active = true;
 
@@ -10,22 +10,32 @@ WHERE id = $1 AND is_active = true;
 SELECT
     id, name, description, price_cents, image_url,
     manufacturer, crew_amount, max_speed, category,
-    stock_quantity, is_active, created_at, updated_at
+    stock_quantity, is_active, is_featured, created_at, updated_at
 FROM products
 WHERE is_active = true
 ORDER BY created_at DESC;
+
+-- name: ListFeaturedProducts :many
+SELECT
+    id, name, description, price_cents, image_url,
+    manufacturer, crew_amount, max_speed, category,
+    stock_quantity, is_active, is_featured, created_at, updated_at
+FROM products
+WHERE is_active = true AND is_featured = true
+ORDER BY created_at DESC
+LIMIT $1;
 
 -- name: InsertProduct :one
 INSERT INTO products (
     name, description, price_cents, image_url,
     manufacturer, crew_amount, max_speed, category,
-    stock_quantity, is_active
+    stock_quantity, is_active, is_featured
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 )
 RETURNING id, name, description, price_cents, image_url,
     manufacturer, crew_amount, max_speed, category,
-    stock_quantity, is_active, created_at, updated_at;
+    stock_quantity, is_active, is_featured, created_at, updated_at;
 
 -- name: TruncateProducts :exec
 TRUNCATE products;

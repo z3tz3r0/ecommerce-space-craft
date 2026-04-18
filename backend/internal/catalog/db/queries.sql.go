@@ -7,6 +7,7 @@ package catalogdb
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -15,14 +16,31 @@ const getProductByID = `-- name: GetProductByID :one
 SELECT
     id, name, description, price_cents, image_url,
     manufacturer, crew_amount, max_speed, category,
-    stock_quantity, is_active, created_at, updated_at
+    stock_quantity, is_active, is_featured, created_at, updated_at
 FROM products
 WHERE id = $1 AND is_active = true
 `
 
-func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, error) {
+type GetProductByIDRow struct {
+	ID            uuid.UUID
+	Name          string
+	Description   string
+	PriceCents    int64
+	ImageUrl      *string
+	Manufacturer  *string
+	CrewAmount    *int32
+	MaxSpeed      *string
+	Category      string
+	StockQuantity int32
+	IsActive      bool
+	IsFeatured    bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (GetProductByIDRow, error) {
 	row := q.db.QueryRow(ctx, getProductByID, id)
-	var i Product
+	var i GetProductByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -35,6 +53,7 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 		&i.Category,
 		&i.StockQuantity,
 		&i.IsActive,
+		&i.IsFeatured,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -45,13 +64,13 @@ const insertProduct = `-- name: InsertProduct :one
 INSERT INTO products (
     name, description, price_cents, image_url,
     manufacturer, crew_amount, max_speed, category,
-    stock_quantity, is_active
+    stock_quantity, is_active, is_featured
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 )
 RETURNING id, name, description, price_cents, image_url,
     manufacturer, crew_amount, max_speed, category,
-    stock_quantity, is_active, created_at, updated_at
+    stock_quantity, is_active, is_featured, created_at, updated_at
 `
 
 type InsertProductParams struct {
@@ -65,9 +84,27 @@ type InsertProductParams struct {
 	Category      string
 	StockQuantity int32
 	IsActive      bool
+	IsFeatured    bool
 }
 
-func (q *Queries) InsertProduct(ctx context.Context, arg InsertProductParams) (Product, error) {
+type InsertProductRow struct {
+	ID            uuid.UUID
+	Name          string
+	Description   string
+	PriceCents    int64
+	ImageUrl      *string
+	Manufacturer  *string
+	CrewAmount    *int32
+	MaxSpeed      *string
+	Category      string
+	StockQuantity int32
+	IsActive      bool
+	IsFeatured    bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) InsertProduct(ctx context.Context, arg InsertProductParams) (InsertProductRow, error) {
 	row := q.db.QueryRow(ctx, insertProduct,
 		arg.Name,
 		arg.Description,
@@ -79,8 +116,9 @@ func (q *Queries) InsertProduct(ctx context.Context, arg InsertProductParams) (P
 		arg.Category,
 		arg.StockQuantity,
 		arg.IsActive,
+		arg.IsFeatured,
 	)
-	var i Product
+	var i InsertProductRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -93,6 +131,7 @@ func (q *Queries) InsertProduct(ctx context.Context, arg InsertProductParams) (P
 		&i.Category,
 		&i.StockQuantity,
 		&i.IsActive,
+		&i.IsFeatured,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -103,21 +142,38 @@ const listActiveProducts = `-- name: ListActiveProducts :many
 SELECT
     id, name, description, price_cents, image_url,
     manufacturer, crew_amount, max_speed, category,
-    stock_quantity, is_active, created_at, updated_at
+    stock_quantity, is_active, is_featured, created_at, updated_at
 FROM products
 WHERE is_active = true
 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListActiveProducts(ctx context.Context) ([]Product, error) {
+type ListActiveProductsRow struct {
+	ID            uuid.UUID
+	Name          string
+	Description   string
+	PriceCents    int64
+	ImageUrl      *string
+	Manufacturer  *string
+	CrewAmount    *int32
+	MaxSpeed      *string
+	Category      string
+	StockQuantity int32
+	IsActive      bool
+	IsFeatured    bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) ListActiveProducts(ctx context.Context) ([]ListActiveProductsRow, error) {
 	rows, err := q.db.Query(ctx, listActiveProducts)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Product
+	var items []ListActiveProductsRow
 	for rows.Next() {
-		var i Product
+		var i ListActiveProductsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -130,6 +186,70 @@ func (q *Queries) ListActiveProducts(ctx context.Context) ([]Product, error) {
 			&i.Category,
 			&i.StockQuantity,
 			&i.IsActive,
+			&i.IsFeatured,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFeaturedProducts = `-- name: ListFeaturedProducts :many
+SELECT
+    id, name, description, price_cents, image_url,
+    manufacturer, crew_amount, max_speed, category,
+    stock_quantity, is_active, is_featured, created_at, updated_at
+FROM products
+WHERE is_active = true AND is_featured = true
+ORDER BY created_at DESC
+LIMIT $1
+`
+
+type ListFeaturedProductsRow struct {
+	ID            uuid.UUID
+	Name          string
+	Description   string
+	PriceCents    int64
+	ImageUrl      *string
+	Manufacturer  *string
+	CrewAmount    *int32
+	MaxSpeed      *string
+	Category      string
+	StockQuantity int32
+	IsActive      bool
+	IsFeatured    bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) ListFeaturedProducts(ctx context.Context, limit int32) ([]ListFeaturedProductsRow, error) {
+	rows, err := q.db.Query(ctx, listFeaturedProducts, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListFeaturedProductsRow
+	for rows.Next() {
+		var i ListFeaturedProductsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.PriceCents,
+			&i.ImageUrl,
+			&i.Manufacturer,
+			&i.CrewAmount,
+			&i.MaxSpeed,
+			&i.Category,
+			&i.StockQuantity,
+			&i.IsActive,
+			&i.IsFeatured,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {

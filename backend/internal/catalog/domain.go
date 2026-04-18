@@ -45,6 +45,7 @@ type Product struct {
 	Category      Category  `json:"category"`
 	StockQuantity int32     `json:"stockQuantity"`
 	IsActive      bool      `json:"isActive"`
+	IsFeatured    bool      `json:"isFeatured"`
 	CreatedAt     time.Time `json:"createdAt"`
 	UpdatedAt     time.Time `json:"updatedAt"`
 }

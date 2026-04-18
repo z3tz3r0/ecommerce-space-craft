@@ -14,9 +14,16 @@ func Register(api huma.API, svc *Service, logger *slog.Logger) {
 		OperationID: "listProducts",
 		Method:      http.MethodGet,
 		Path:        "/api/products",
-		Summary:     "List all active products",
+		Summary:     "List active products, optionally filtered to featured only",
 		Tags:        []string{"Catalog"},
-	}, func(ctx context.Context, _ *struct{}) (*ListProductsOutput, error) {
+	}, func(ctx context.Context, in *ListProductsInput) (*ListProductsOutput, error) {
+		if in.Featured {
+			products, err := svc.ListFeatured(ctx, in.Limit)
+			if err != nil {
+				return nil, mapError(logger, err)
+			}
+			return &ListProductsOutput{Body: products}, nil
+		}
 		products, err := svc.ListActive(ctx)
 		if err != nil {
 			return nil, mapError(logger, err)
@@ -37,6 +44,16 @@ func Register(api huma.API, svc *Service, logger *slog.Logger) {
 		}
 		return &GetProductOutput{Body: p}, nil
 	})
+}
+
+// ListProductsInput is the Huma input for the catalog list endpoint.
+//
+// When Featured is false (the default), Limit is ignored and ALL active
+// products are returned. When Featured is true, Limit caps the result count;
+// when omitted, the service applies a server-side default.
+type ListProductsInput struct {
+	Featured bool  `query:"featured" doc:"Return only featured products"`
+	Limit    int32 `query:"limit" minimum:"1" maximum:"24" doc:"Cap on featured results; omit to use the server default. Ignored when featured is false."`
 }
 
 // GetProductInput is the Huma input for fetching a single product.

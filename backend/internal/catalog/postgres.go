@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -31,7 +32,22 @@ func (p *Postgres) GetByID(ctx context.Context, id uuid.UUID) (Product, error) {
 		}
 		return Product{}, fmt.Errorf("postgres: get product: %w", err)
 	}
-	return rowToProduct(row), nil
+	return rowToProduct(productRow{
+		id:            row.ID,
+		name:          row.Name,
+		description:   row.Description,
+		priceCents:    row.PriceCents,
+		imageUrl:      row.ImageUrl,
+		manufacturer:  row.Manufacturer,
+		crewAmount:    row.CrewAmount,
+		maxSpeed:      row.MaxSpeed,
+		category:      row.Category,
+		stockQuantity: row.StockQuantity,
+		isActive:      row.IsActive,
+		isFeatured:    row.IsFeatured,
+		createdAt:     row.CreatedAt,
+		updatedAt:     row.UpdatedAt,
+	}), nil
 }
 
 // ListActive returns every active product ordered by created_at DESC.
@@ -42,7 +58,51 @@ func (p *Postgres) ListActive(ctx context.Context) ([]Product, error) {
 	}
 	out := make([]Product, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, rowToProduct(r))
+		out = append(out, rowToProduct(productRow{
+			id:            r.ID,
+			name:          r.Name,
+			description:   r.Description,
+			priceCents:    r.PriceCents,
+			imageUrl:      r.ImageUrl,
+			manufacturer:  r.Manufacturer,
+			crewAmount:    r.CrewAmount,
+			maxSpeed:      r.MaxSpeed,
+			category:      r.Category,
+			stockQuantity: r.StockQuantity,
+			isActive:      r.IsActive,
+			isFeatured:    r.IsFeatured,
+			createdAt:     r.CreatedAt,
+			updatedAt:     r.UpdatedAt,
+		}))
+	}
+	return out, nil
+}
+
+// ListFeatured returns at most `limit` featured + active products,
+// ordered by created_at DESC.
+func (p *Postgres) ListFeatured(ctx context.Context, limit int32) ([]Product, error) {
+	rows, err := p.q.ListFeaturedProducts(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: list featured: %w", err)
+	}
+	out := make([]Product, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, rowToProduct(productRow{
+			id:            r.ID,
+			name:          r.Name,
+			description:   r.Description,
+			priceCents:    r.PriceCents,
+			imageUrl:      r.ImageUrl,
+			manufacturer:  r.Manufacturer,
+			crewAmount:    r.CrewAmount,
+			maxSpeed:      r.MaxSpeed,
+			category:      r.Category,
+			stockQuantity: r.StockQuantity,
+			isActive:      r.IsActive,
+			isFeatured:    r.IsFeatured,
+			createdAt:     r.CreatedAt,
+			updatedAt:     r.UpdatedAt,
+		}))
 	}
 	return out, nil
 }
@@ -59,6 +119,7 @@ type CreateInput struct {
 	Category      Category
 	StockQuantity int32
 	IsActive      bool
+	IsFeatured    bool
 }
 
 // Create inserts a new Product and returns the persisted row. This is used by
@@ -76,11 +137,27 @@ func (p *Postgres) Create(ctx context.Context, in CreateInput) (Product, error) 
 		Category:      string(in.Category),
 		StockQuantity: in.StockQuantity,
 		IsActive:      in.IsActive,
+		IsFeatured:    in.IsFeatured,
 	})
 	if err != nil {
 		return Product{}, fmt.Errorf("postgres: insert product: %w", err)
 	}
-	return rowToProduct(row), nil
+	return rowToProduct(productRow{
+		id:            row.ID,
+		name:          row.Name,
+		description:   row.Description,
+		priceCents:    row.PriceCents,
+		imageUrl:      row.ImageUrl,
+		manufacturer:  row.Manufacturer,
+		crewAmount:    row.CrewAmount,
+		maxSpeed:      row.MaxSpeed,
+		category:      row.Category,
+		stockQuantity: row.StockQuantity,
+		isActive:      row.IsActive,
+		isFeatured:    row.IsFeatured,
+		createdAt:     row.CreatedAt,
+		updatedAt:     row.UpdatedAt,
+	}), nil
 }
 
 // DeleteAll truncates the products table. Seeder-only helper.
@@ -91,21 +168,43 @@ func (p *Postgres) DeleteAll(ctx context.Context) error {
 	return nil
 }
 
-// rowToProduct translates the sqlc row type into the domain Product.
-func rowToProduct(r catalogdb.Product) Product {
+// productRow is a package-private intermediary that every sqlc per-query row
+// type maps into before being converted to the domain Product. Named-field
+// assignment at every call site eliminates the positional-argument landmine
+// that would arise from boolean/string args of identical types.
+type productRow struct {
+	id            uuid.UUID
+	name          string
+	description   string
+	priceCents    int64
+	imageUrl      *string
+	manufacturer  *string
+	crewAmount    *int32
+	maxSpeed      *string
+	category      string
+	stockQuantity int32
+	isActive      bool
+	isFeatured    bool
+	createdAt     time.Time
+	updatedAt     time.Time
+}
+
+// rowToProduct translates a productRow intermediary into the domain Product.
+func rowToProduct(r productRow) Product {
 	return Product{
-		ID:            r.ID,
-		Name:          r.Name,
-		Description:   r.Description,
-		PriceCents:    r.PriceCents,
-		ImageURL:      r.ImageUrl,
-		Manufacturer:  r.Manufacturer,
-		CrewAmount:    r.CrewAmount,
-		MaxSpeed:      r.MaxSpeed,
-		Category:      Category(r.Category),
-		StockQuantity: r.StockQuantity,
-		IsActive:      r.IsActive,
-		CreatedAt:     r.CreatedAt,
-		UpdatedAt:     r.UpdatedAt,
+		ID:            r.id,
+		Name:          r.name,
+		Description:   r.description,
+		PriceCents:    r.priceCents,
+		ImageURL:      r.imageUrl,
+		Manufacturer:  r.manufacturer,
+		CrewAmount:    r.crewAmount,
+		MaxSpeed:      r.maxSpeed,
+		Category:      Category(r.category),
+		StockQuantity: r.stockQuantity,
+		IsActive:      r.isActive,
+		IsFeatured:    r.isFeatured,
+		CreatedAt:     r.createdAt,
+		UpdatedAt:     r.updatedAt,
 	}
 }

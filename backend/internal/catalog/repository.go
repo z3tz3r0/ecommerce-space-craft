@@ -11,4 +11,5 @@ import (
 type Repository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (Product, error)
 	ListActive(ctx context.Context) ([]Product, error)
+	ListFeatured(ctx context.Context, limit int32) ([]Product, error)
 }
