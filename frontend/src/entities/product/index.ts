@@ -1,4 +1,7 @@
+export { useFeaturedProducts } from "./api/getFeaturedProducts"
+export { useProduct } from "./api/getProduct"
 export { useProducts } from "./api/getProducts"
+export { productKeys } from "./api/product-keys"
 export type { Category } from "./model/categories"
 export { CATEGORIES } from "./model/categories"
 export type { StockStatus } from "./model/stock"
