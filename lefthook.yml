@@ -7,3 +7,10 @@ pre-commit:
     go-lint:
       glob: "backend/**/*.go"
       run: cd backend && golangci-lint run --new-from-rev=HEAD~ ./...
+    biome:
+      glob: "frontend/**/*.{ts,tsx,js,jsx,json}"
+      run: cd frontend && bunx biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+    steiger:
+      glob: "frontend/src/**/*.{ts,tsx}"
+      run: cd frontend && bunx steiger src
