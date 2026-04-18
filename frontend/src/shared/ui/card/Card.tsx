@@ -28,13 +28,12 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+// Promoted from shadcn's default <div> to <h3> for semantic heading
+// hierarchy in ProductCard (h1 page → h2 section → h3 card title).
+// Intentional deviation from the shadcn scaffold; preserve on any resync.
+function CardTitle({ className, ...props }: React.ComponentProps<"h3">) {
   return (
-    <div
-      data-slot="card-title"
-      className={cn("leading-none font-semibold", className)}
-      {...props}
-    />
+    <h3 data-slot="card-title" className={cn("leading-none font-semibold", className)} {...props} />
   )
 }
 

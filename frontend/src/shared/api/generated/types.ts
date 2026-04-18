@@ -11,7 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List all active products */
+        /** List active products, optionally filtered to featured only */
         get: operations["listProducts"];
         put?: never;
         post?: never;
@@ -132,6 +132,7 @@ export interface components {
             id: string;
             imageUrl?: string;
             isActive: boolean;
+            isFeatured: boolean;
             manufacturer?: string;
             maxSpeed?: string;
             name: string;
@@ -153,7 +154,12 @@ export type $defs = Record<string, never>;
 export interface operations {
     listProducts: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Return only featured products */
+                featured?: boolean;
+                /** @description Cap on featured results; omit to use the server default. Ignored when featured is false. */
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
