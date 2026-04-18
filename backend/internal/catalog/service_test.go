@@ -99,64 +99,34 @@ func TestService_ListActive_ReturnsRepoResult(t *testing.T) {
 	require.Equal(t, want[0].Name, got[0].Name)
 }
 
-func TestService_ListFeatured_DefaultLimit_When_LimitZero(t *testing.T) {
-	var captured int32
-	repo := mockRepo{
-		listFeaturedFn: func(_ context.Context, limit int32) ([]catalog.Product, error) {
-			captured = limit
-			return nil, nil
-		},
+func TestService_ListFeatured_LimitClamping(t *testing.T) {
+	cases := []struct {
+		name     string
+		in       int32
+		wantSent int32
+	}{
+		{"zero becomes default", 0, 12},
+		{"negative becomes default", -5, 12},
+		{"min valid passes through", 1, 1},
+		{"custom in range", 7, 7},
+		{"boundary max passes through", 24, 24},
+		{"over max clamps to 24", 25, 24},
+		{"large clamps to 24", 100, 24},
 	}
-	svc := catalog.NewService(repo)
-
-	_, err := svc.ListFeatured(context.Background(), 0)
-	require.NoError(t, err)
-	require.Equal(t, int32(12), captured)
-}
-
-func TestService_ListFeatured_DefaultLimit_When_LimitNegative(t *testing.T) {
-	var captured int32
-	repo := mockRepo{
-		listFeaturedFn: func(_ context.Context, limit int32) ([]catalog.Product, error) {
-			captured = limit
-			return nil, nil
-		},
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var captured int32
+			svc := catalog.NewService(mockRepo{
+				listFeaturedFn: func(_ context.Context, limit int32) ([]catalog.Product, error) {
+					captured = limit
+					return nil, nil
+				},
+			})
+			_, err := svc.ListFeatured(context.Background(), tc.in)
+			require.NoError(t, err)
+			require.Equal(t, tc.wantSent, captured)
+		})
 	}
-	svc := catalog.NewService(repo)
-
-	_, err := svc.ListFeatured(context.Background(), -5)
-	require.NoError(t, err)
-	require.Equal(t, int32(12), captured)
-}
-
-func TestService_ListFeatured_HonoursCustomLimit(t *testing.T) {
-	var captured int32
-	repo := mockRepo{
-		listFeaturedFn: func(_ context.Context, limit int32) ([]catalog.Product, error) {
-			captured = limit
-			return nil, nil
-		},
-	}
-	svc := catalog.NewService(repo)
-
-	_, err := svc.ListFeatured(context.Background(), 7)
-	require.NoError(t, err)
-	require.Equal(t, int32(7), captured)
-}
-
-func TestService_ListFeatured_ClampsLimitToMax(t *testing.T) {
-	var captured int32
-	repo := mockRepo{
-		listFeaturedFn: func(_ context.Context, limit int32) ([]catalog.Product, error) {
-			captured = limit
-			return nil, nil
-		},
-	}
-	svc := catalog.NewService(repo)
-
-	_, err := svc.ListFeatured(context.Background(), 100)
-	require.NoError(t, err)
-	require.Equal(t, int32(24), captured)
 }
 
 func TestService_ListFeatured_PropagatesRepoError(t *testing.T) {
