@@ -1233,15 +1233,19 @@ Full file:
 
 ```json
 {
-  "$schema": "https://biomejs.dev/schemas/2.0.0/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.12/schema.json",
   "files": {
-    "includes": ["src/**/*.ts", "src/**/*.tsx", "*.ts", "*.tsx", "*.json"],
-    "ignoreUnknown": true,
-    "experimentalScannerIgnores": [
-      "src/shared/api/generated/**",
-      "dist/**",
-      "node_modules/**"
-    ]
+    "includes": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "*.ts",
+      "*.tsx",
+      "*.json",
+      "!!**/src/shared/api/generated",
+      "!!**/dist",
+      "!!**/node_modules"
+    ],
+    "ignoreUnknown": true
   },
   "formatter": {
     "enabled": true,
@@ -1264,7 +1268,9 @@ Full file:
 }
 ```
 
-Note: `experimentalScannerIgnores` replaces the older `files.ignore` key in Biome 2. If the installed Biome version predates that (Biome 1.x), use `"ignore": ["src/shared/api/generated/**", "dist/**"]` under `files` instead. Verify with `bunx biome --version`.
+Notes for Biome 2.4.x:
+- `$schema` must match the installed Biome version exactly (Biome rejects mismatched schemas as deserialization errors).
+- `experimentalScannerIgnores` has been removed in 2.4.x. Use negated entries in `files.includes` instead (`!!path` excludes that path from the include set).
 
 - [ ] **Step 2: Run Biome formatter once to normalize the existing code**
 
