@@ -7,4 +7,19 @@ export default defineConfig([
     files: ["src/shared/api/generated/**"],
     rules: { "fsd/public-api": "off" },
   },
+  {
+    // Phase 0b: empty placeholder layers and the lone foundation entity.
+    // Re-enable in Phase 1 once feature/widget slices populate.
+    // The `.*` patterns silence the rule on placeholder dirs that only contain
+    // a `.gitkeep` — micromatch's default behaviour skips dotfiles for `**`.
+    files: [
+      "src/widgets/**",
+      "src/widgets/**/.*",
+      "src/features/**",
+      "src/features/**/.*",
+      "src/entities/**",
+      "src/entities/**/.*",
+    ],
+    rules: { "fsd/insignificant-slice": "off" },
+  },
 ])
