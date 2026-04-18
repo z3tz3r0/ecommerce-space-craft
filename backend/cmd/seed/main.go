@@ -31,6 +31,7 @@ type seedProduct struct {
 	Category      string  `json:"category"`
 	StockQuantity int32   `json:"stockQuantity"`
 	IsActive      bool    `json:"isActive"`
+	IsFeatured    bool    `json:"isFeatured,omitempty"`
 }
 
 func main() {
@@ -83,6 +84,7 @@ func main() {
 			Category:      catalog.Category(it.Category),
 			StockQuantity: it.StockQuantity,
 			IsActive:      it.IsActive,
+			IsFeatured:    it.IsFeatured,
 		}); err != nil {
 			log.Fatalf("insert %s: %v", it.Name, err)
 		}

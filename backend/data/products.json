@@ -9,7 +9,8 @@
     "maxSpeed": "85 MGLT",
     "category": "Fighter",
     "stockQuantity": 12,
-    "isActive": true
+    "isActive": true,
+    "isFeatured": true
   },
   {
     "name": "Nova Nebula Freighter",
@@ -21,7 +22,8 @@
     "maxSpeed": "55 MGLT",
     "category": "Freighter",
     "stockQuantity": 7,
-    "isActive": true
+    "isActive": true,
+    "isFeatured": true
   },
   {
     "name": "Solar Seraphim Shuttle",
@@ -33,7 +35,8 @@
     "maxSpeed": "70 MGLT",
     "category": "Shuttle",
     "stockQuantity": 15,
-    "isActive": true
+    "isActive": true,
+    "isFeatured": true
   },
   {
     "name": "Turbo Void Speeder",
@@ -57,7 +60,8 @@
     "maxSpeed": "60 MGLT",
     "category": "Cruiser",
     "stockQuantity": 4,
-    "isActive": true
+    "isActive": true,
+    "isFeatured": true
   },
   {
     "name": "Prototype Phoenix Capital Ship",
