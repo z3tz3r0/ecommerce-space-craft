@@ -17,7 +17,7 @@ See `docs/superpowers/specs/2026-04-17-phase-0-foundation-design.md` for the ful
 
 | Service | URL |
 |---|---|
-| Frontend | https://<vercel-url>.vercel.app *(replace with real URL after Vercel deploy)* |
+| Frontend | https://ecommerce-space-craft.vercel.app |
 | Backend (API) | https://spacecraft-api.onrender.com |
 | Backend health | https://spacecraft-api.onrender.com/health |
 | OpenAPI spec | https://spacecraft-api.onrender.com/openapi.json |

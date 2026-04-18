@@ -4,7 +4,7 @@ services:
     runtime: docker
     rootDir: backend
     dockerfilePath: ./Dockerfile
-    branch: phase-0a/backend-foundation
+    branch: main
     healthCheckPath: /health
     plan: free
     autoDeploy: true
@@ -12,7 +12,7 @@ services:
       - key: DATABASE_URL
         sync: false  # set manually in dashboard — Neon connection string
       - key: CORS_ORIGINS
-        value: http://localhost:5173
+        value: http://localhost:5173,https://ecommerce-space-craft.vercel.app
       - key: LOG_LEVEL
         value: info
       - key: ENVIRONMENT
