@@ -22,4 +22,10 @@ export default defineConfig([
     ],
     rules: { "fsd/insignificant-slice": "off" },
   },
+  {
+    // catalog-filter, catalog-sort, catalog-search intentionally share the
+    // "catalog" prefix as a domain namespace — suppress the false positive.
+    files: ["src/features/**"],
+    rules: { "fsd/repetitive-naming": "off" },
+  },
 ])
