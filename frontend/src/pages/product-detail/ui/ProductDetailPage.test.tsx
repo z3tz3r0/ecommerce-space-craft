@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { render, screen } from "@testing-library/react"
 import type { ReactNode } from "react"
 import { MemoryRouter, Route, Routes } from "react-router"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Product } from "@/entities/product"
 import { ProductDetailPage } from "./ProductDetailPage"
 
@@ -53,8 +53,11 @@ function makeWrapper(path = "/products/abc") {
 }
 
 describe("ProductDetailPage", () => {
-  it("renders all product fields", () => {
+  beforeEach(() => {
     mockState = { data: sample, isLoading: false, isError: false }
+  })
+
+  it("renders all product fields", () => {
     render(<div />, { wrapper: makeWrapper() })
     expect(screen.getByText("X-Wing T-65")).toBeInTheDocument()
     expect(screen.getByText(/Rebel Alliance/)).toBeInTheDocument()
