@@ -50,10 +50,10 @@ func Register(api huma.API, svc *Service, logger *slog.Logger) {
 //
 // When Featured is false (the default), Limit is ignored and ALL active
 // products are returned. When Featured is true, Limit caps the result count;
-// the service applies a default of 12 and a hard ceiling of 24.
+// when omitted, the service applies a server-side default.
 type ListProductsInput struct {
 	Featured bool  `query:"featured" doc:"Return only featured products"`
-	Limit    int32 `query:"limit" minimum:"0" maximum:"24" doc:"Optional cap on featured results (default 12, max 24); ignored when featured is false"`
+	Limit    int32 `query:"limit" minimum:"1" maximum:"24" doc:"Cap on featured results; omit to use the server default. Ignored when featured is false."`
 }
 
 // GetProductInput is the Huma input for fetching a single product.
