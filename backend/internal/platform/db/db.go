@@ -25,12 +25,29 @@ func New(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("db: new pool: %w", err)
 	}
 
-	pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	if err := pool.Ping(pingCtx); err != nil {
+	// Isolate the boot-time ping from the parent signal-aware ctx and give it
+	// generous headroom for Neon free-tier cold starts (often 10-20s).
+	if err := pingWithRetry(pool, 3, 2*time.Second); err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("db: ping: %w", err)
 	}
 
 	return pool, nil
+}
+
+func pingWithRetry(pool *pgxpool.Pool, attempts int, baseDelay time.Duration) error {
+	var lastErr error
+	for i := 0; i < attempts; i++ {
+		pingCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		err := pool.Ping(pingCtx)
+		cancel()
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		if i < attempts-1 {
+			time.Sleep(baseDelay * (1 << i)) // 2s, 4s
+		}
+	}
+	return lastErr
 }
