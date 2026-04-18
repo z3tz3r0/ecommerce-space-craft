@@ -25,7 +25,11 @@ export default defineConfig([
   {
     // catalog-filter, catalog-sort, catalog-search intentionally share the
     // "catalog" prefix as a domain namespace — suppress the false positive.
-    files: ["src/features/**"],
+    files: [
+      "src/features/catalog-filter/**",
+      "src/features/catalog-sort/**",
+      "src/features/catalog-search/**",
+    ],
     rules: { "fsd/repetitive-naming": "off" },
   },
 ])
