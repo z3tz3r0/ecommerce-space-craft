@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -31,7 +32,10 @@ func (p *Postgres) GetByID(ctx context.Context, id uuid.UUID) (Product, error) {
 		}
 		return Product{}, fmt.Errorf("postgres: get product: %w", err)
 	}
-	return rowToProduct(row), nil
+	return rowToProduct(row.ID, row.Name, row.Description, row.PriceCents,
+		row.ImageUrl, row.Manufacturer, row.CrewAmount, row.MaxSpeed,
+		row.Category, row.StockQuantity, row.IsActive, row.IsFeatured,
+		row.CreatedAt, row.UpdatedAt), nil
 }
 
 // ListActive returns every active product ordered by created_at DESC.
@@ -42,7 +46,10 @@ func (p *Postgres) ListActive(ctx context.Context) ([]Product, error) {
 	}
 	out := make([]Product, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, rowToProduct(r))
+		out = append(out, rowToProduct(r.ID, r.Name, r.Description, r.PriceCents,
+			r.ImageUrl, r.Manufacturer, r.CrewAmount, r.MaxSpeed,
+			r.Category, r.StockQuantity, r.IsActive, r.IsFeatured,
+			r.CreatedAt, r.UpdatedAt))
 	}
 	return out, nil
 }
@@ -59,6 +66,7 @@ type CreateInput struct {
 	Category      Category
 	StockQuantity int32
 	IsActive      bool
+	IsFeatured    bool
 }
 
 // Create inserts a new Product and returns the persisted row. This is used by
@@ -76,11 +84,15 @@ func (p *Postgres) Create(ctx context.Context, in CreateInput) (Product, error) 
 		Category:      string(in.Category),
 		StockQuantity: in.StockQuantity,
 		IsActive:      in.IsActive,
+		IsFeatured:    in.IsFeatured,
 	})
 	if err != nil {
 		return Product{}, fmt.Errorf("postgres: insert product: %w", err)
 	}
-	return rowToProduct(row), nil
+	return rowToProduct(row.ID, row.Name, row.Description, row.PriceCents,
+		row.ImageUrl, row.Manufacturer, row.CrewAmount, row.MaxSpeed,
+		row.Category, row.StockQuantity, row.IsActive, row.IsFeatured,
+		row.CreatedAt, row.UpdatedAt), nil
 }
 
 // DeleteAll truncates the products table. Seeder-only helper.
@@ -91,21 +103,40 @@ func (p *Postgres) DeleteAll(ctx context.Context) error {
 	return nil
 }
 
-// rowToProduct translates the sqlc row type into the domain Product.
-func rowToProduct(r catalogdb.Product) Product {
+// rowToProduct translates individual column values into the domain Product.
+// It accepts fields explicitly so it can serve all sqlc per-query row types
+// (GetProductByIDRow, ListActiveProductsRow, InsertProductRow, etc.) without
+// requiring a separate converter for each generated struct.
+func rowToProduct(
+	id uuid.UUID,
+	name string,
+	description string,
+	priceCents int64,
+	imageUrl *string,
+	manufacturer *string,
+	crewAmount *int32,
+	maxSpeed *string,
+	category string,
+	stockQuantity int32,
+	isActive bool,
+	isFeatured bool,
+	createdAt time.Time,
+	updatedAt time.Time,
+) Product {
 	return Product{
-		ID:            r.ID,
-		Name:          r.Name,
-		Description:   r.Description,
-		PriceCents:    r.PriceCents,
-		ImageURL:      r.ImageUrl,
-		Manufacturer:  r.Manufacturer,
-		CrewAmount:    r.CrewAmount,
-		MaxSpeed:      r.MaxSpeed,
-		Category:      Category(r.Category),
-		StockQuantity: r.StockQuantity,
-		IsActive:      r.IsActive,
-		CreatedAt:     r.CreatedAt,
-		UpdatedAt:     r.UpdatedAt,
+		ID:            id,
+		Name:          name,
+		Description:   description,
+		PriceCents:    priceCents,
+		ImageURL:      imageUrl,
+		Manufacturer:  manufacturer,
+		CrewAmount:    crewAmount,
+		MaxSpeed:      maxSpeed,
+		Category:      Category(category),
+		StockQuantity: stockQuantity,
+		IsActive:      isActive,
+		IsFeatured:    isFeatured,
+		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
 	}
 }
