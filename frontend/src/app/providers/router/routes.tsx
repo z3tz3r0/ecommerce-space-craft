@@ -1,6 +1,6 @@
 import type { RouteObject } from "react-router"
-import { HomePage } from "@/pages/home"
 import { App } from "@/app/App"
+import { HomePage } from "@/pages/home"
 
 export const routes: RouteObject[] = [
   {
