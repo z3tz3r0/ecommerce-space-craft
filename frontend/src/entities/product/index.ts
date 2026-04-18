@@ -1,2 +1,6 @@
-export { useProducts } from "./api"
+export { useProducts } from "./api/getProducts"
+export type { Category } from "./model/categories"
+export { CATEGORIES } from "./model/categories"
+export type { StockStatus } from "./model/stock"
+export { stockLabel, stockStatus } from "./model/stock"
 export type { Product } from "./model/types"
