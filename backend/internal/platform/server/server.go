@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -63,9 +64,21 @@ func requestLogMiddleware(logger *slog.Logger) func(huma.Context, func(huma.Cont
 }
 
 func corsMiddleware(allowed []string) func(huma.Context, func(huma.Context)) {
+	// Normalise the configured allowlist once: trim whitespace and any
+	// trailing slash so values pasted with or without a trailing "/" match
+	// the browser's Origin header (which never carries one).
+	normalisedAllowed := make([]string, 0, len(allowed))
+	for _, a := range allowed {
+		a = strings.TrimSpace(a)
+		a = strings.TrimRight(a, "/")
+		if a != "" {
+			normalisedAllowed = append(normalisedAllowed, a)
+		}
+	}
+
 	return func(ctx huma.Context, next func(huma.Context)) {
-		origin := ctx.Header("Origin")
-		if origin != "" && slices.Contains(allowed, origin) {
+		origin := strings.TrimRight(ctx.Header("Origin"), "/")
+		if origin != "" && slices.Contains(normalisedAllowed, origin) {
 			ctx.SetHeader("Access-Control-Allow-Origin", origin)
 			ctx.SetHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			ctx.SetHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
