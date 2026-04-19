@@ -171,14 +171,7 @@ func (f fakeRepoImpl) GetProduct(ctx context.Context, productID uuid.UUID) (prod
 	if err != nil {
 		return productSnapshot{}, err
 	}
-	return productSnapshot{
-		ID:            p.ID,
-		Name:          p.Name,
-		PriceCents:    p.PriceCents,
-		ImageURL:      p.ImageURL,
-		StockQuantity: p.StockQuantity,
-		IsActive:      p.IsActive,
-	}, nil
+	return productSnapshot(p), nil
 }
 
 func (f fakeRepoImpl) GetItemQuantity(ctx context.Context, userID, productID uuid.UUID) (int32, error) {

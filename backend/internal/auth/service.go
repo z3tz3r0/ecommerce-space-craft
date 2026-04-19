@@ -141,11 +141,5 @@ func (f fakeRepoImpl) GetUserByID(ctx context.Context, id uuid.UUID) (userRecord
 }
 
 func toUserRecordFromFake(r FakeRecord) userRecord {
-	return userRecord{
-		ID:           r.ID,
-		Email:        r.Email,
-		PasswordHash: r.PasswordHash,
-		CreatedAt:    r.CreatedAt,
-		UpdatedAt:    r.UpdatedAt,
-	}
+	return userRecord(r)
 }
