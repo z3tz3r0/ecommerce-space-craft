@@ -40,7 +40,8 @@ func main() {
 
 	api := server.New("Spacecraft Store API", "0.1.0", logger, cfg.CORSOrigins)
 
-	sess := session.New(pool, cfg.Environment == "production")
+	sess, stopSessionCleanup := session.New(pool, cfg.Environment == "production")
+	defer stopSessionCleanup()
 
 	catalogRepo := catalog.NewPostgres(pool)
 	catalogSvc := catalog.NewService(catalogRepo)
@@ -60,15 +61,25 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
+	// Buffered so the goroutine can send and exit even if main has already
+	// moved on (e.g. SIGINT arrived before ListenAndServe failed).
+	serverErrCh := make(chan error, 1)
 	go func() {
 		logger.Info("server listening", "port", cfg.Port, "env", cfg.Environment)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("listen", "err", err.Error())
+			serverErrCh <- err
 		}
 	}()
 
-	<-ctx.Done()
-	logger.Info("shutdown signal received")
+	select {
+	case <-ctx.Done():
+		logger.Info("shutdown signal received")
+	case err := <-serverErrCh:
+		// ListenAndServe failed (port in use, bind error, etc.). Without
+		// this branch main would block on <-ctx.Done() forever waiting for
+		// a SIGINT that wouldn't come.
+		logger.Error("server died unexpectedly", "err", err.Error())
+	}
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
