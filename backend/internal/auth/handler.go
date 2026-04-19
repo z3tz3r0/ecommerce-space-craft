@@ -81,7 +81,7 @@ func Register(api huma.API, svc *Service, sess session.Manager, logger *slog.Log
 		Middlewares: huma.Middlewares{RequireAuth(api, sess, svc, logger)},
 	}
 	huma.Register(api, meOp, func(ctx context.Context, _ *struct{}) (*UserOutput, error) {
-		return &UserOutput{Body: CurrentUser(ctx)}, nil
+		return &UserOutput{Body: MustCurrentUser(ctx)}, nil
 	})
 }
 

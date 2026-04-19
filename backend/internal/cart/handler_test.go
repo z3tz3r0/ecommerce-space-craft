@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/auth"
+	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/auth/authtest"
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/cart"
 )
 
@@ -57,7 +58,7 @@ func signupAndAuthenticate(t *testing.T, client *http.Client, baseURL string) {
 }
 
 func TestHandler_GetCart_NoSession_Returns401(t *testing.T) {
-	authSvc := auth.NewServiceFake(t, auth.FakeRepoAdapter{})
+	authSvc := authtest.NewService(t, authtest.Adapter{})
 	cartSvc := cart.NewServiceFake(t, cart.FakeRepoAdapter{})
 	srv := buildTestServer(t, authSvc, cartSvc)
 	defer srv.Close()
@@ -71,12 +72,12 @@ func TestHandler_GetCart_NoSession_Returns401(t *testing.T) {
 func TestHandler_GetCart_WithSession_ReturnsEmptyItems(t *testing.T) {
 	uid := uuid.New()
 	now := time.Now()
-	authSvc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
-		Create: func(_ context.Context, email, hash string) (auth.FakeRecord, error) {
-			return auth.FakeRecord{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
+	authSvc := authtest.NewService(t, authtest.Adapter{
+		Create: func(_ context.Context, email, hash string) (authtest.Record, error) {
+			return authtest.Record{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
 		},
-		GetByID: func(_ context.Context, _ uuid.UUID) (auth.FakeRecord, error) {
-			return auth.FakeRecord{ID: uid, Email: "a@b.com", CreatedAt: now, UpdatedAt: now}, nil
+		GetByID: func(_ context.Context, _ uuid.UUID) (authtest.Record, error) {
+			return authtest.Record{ID: uid, Email: "a@b.com", CreatedAt: now, UpdatedAt: now}, nil
 		},
 	})
 	cartSvc := cart.NewServiceFake(t, cart.FakeRepoAdapter{
@@ -104,23 +105,26 @@ func TestHandler_AddItem_WithSession_ReturnsItem(t *testing.T) {
 	uid := uuid.New()
 	pid := uuid.New()
 	now := time.Now()
-	authSvc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
-		Create: func(_ context.Context, email, hash string) (auth.FakeRecord, error) {
-			return auth.FakeRecord{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
+	authSvc := authtest.NewService(t, authtest.Adapter{
+		Create: func(_ context.Context, email, hash string) (authtest.Record, error) {
+			return authtest.Record{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
 		},
-		GetByID: func(_ context.Context, _ uuid.UUID) (auth.FakeRecord, error) {
-			return auth.FakeRecord{ID: uid, Email: "a@b.com", CreatedAt: now, UpdatedAt: now}, nil
+		GetByID: func(_ context.Context, _ uuid.UUID) (authtest.Record, error) {
+			return authtest.Record{ID: uid, Email: "a@b.com", CreatedAt: now, UpdatedAt: now}, nil
 		},
 	})
 	cartSvc := cart.NewServiceFake(t, cart.FakeRepoAdapter{
-		GetProduct: func(_ context.Context, _ uuid.UUID) (cart.FakeProduct, error) {
-			return cart.FakeProduct{ID: pid, Name: "X-Wing", PriceCents: 12500000, StockQuantity: 10, IsActive: true}, nil
-		},
-		GetItemQuantity: func(_ context.Context, _, _ uuid.UUID) (int32, error) {
-			return 0, nil
-		},
-		UpsertItem: func(_ context.Context, _, _ uuid.UUID, _ int32) error {
-			return nil
+		AddItem: func(_ context.Context, gotUserID, gotProductID uuid.UUID, gotDelta int32) (cart.Item, error) {
+			require.Equal(t, uid, gotUserID, "handler must forward authenticated user's id")
+			require.Equal(t, pid, gotProductID, "handler must forward path productId")
+			require.Equal(t, int32(2), gotDelta, "handler must forward body quantity")
+			return cart.Item{
+				ProductID:     pid,
+				Name:          "X-Wing",
+				PriceCents:    12500000,
+				Quantity:      2,
+				StockQuantity: 10,
+			}, nil
 		},
 	})
 	srv := buildTestServer(t, authSvc, cartSvc)
@@ -145,12 +149,12 @@ func TestHandler_DeleteItem_WithSession_Returns204(t *testing.T) {
 	uid := uuid.New()
 	pid := uuid.New()
 	now := time.Now()
-	authSvc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
-		Create: func(_ context.Context, email, hash string) (auth.FakeRecord, error) {
-			return auth.FakeRecord{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
+	authSvc := authtest.NewService(t, authtest.Adapter{
+		Create: func(_ context.Context, email, hash string) (authtest.Record, error) {
+			return authtest.Record{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
 		},
-		GetByID: func(_ context.Context, _ uuid.UUID) (auth.FakeRecord, error) {
-			return auth.FakeRecord{ID: uid, Email: "a@b.com", CreatedAt: now, UpdatedAt: now}, nil
+		GetByID: func(_ context.Context, _ uuid.UUID) (authtest.Record, error) {
+			return authtest.Record{ID: uid, Email: "a@b.com", CreatedAt: now, UpdatedAt: now}, nil
 		},
 	})
 	cartSvc := cart.NewServiceFake(t, cart.FakeRepoAdapter{

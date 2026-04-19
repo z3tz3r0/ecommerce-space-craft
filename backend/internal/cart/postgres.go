@@ -1,9 +1,11 @@
 package cart
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -14,12 +16,15 @@ import (
 
 // Postgres is the pgx/sqlc-backed implementation of Repository.
 type Postgres struct {
-	q *cartdb.Queries
+	pool *pgxpool.Pool
+	q    *cartdb.Queries
 }
+
+var _ Repository = (*Postgres)(nil)
 
 // NewPostgres wraps a pgxpool.Pool with the sqlc-generated Queries.
 func NewPostgres(pool *pgxpool.Pool) *Postgres {
-	return &Postgres{q: cartdb.New(pool)}
+	return &Postgres{pool: pool, q: cartdb.New(pool)}
 }
 
 // GetItems returns the user's cart lines joined against active products.
@@ -42,54 +47,85 @@ func (p *Postgres) GetItems(ctx context.Context, userID uuid.UUID) ([]Item, erro
 	return out, nil
 }
 
-// GetProduct returns the live product snapshot or ErrProductNotFound.
-func (p *Postgres) GetProduct(ctx context.Context, productID uuid.UUID) (productSnapshot, error) {
-	row, err := p.q.GetProductForCart(ctx, productID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return productSnapshot{}, ErrProductNotFound
+// AddItem implements the atomic add-and-clamp described on Repository.
+func (p *Postgres) AddItem(ctx context.Context, userID, productID uuid.UUID, delta int32) (Item, error) {
+	var result Item
+	err := pgx.BeginFunc(ctx, p.pool, func(tx pgx.Tx) error {
+		q := p.q.WithTx(tx)
+		prod, err := q.LockProductForCart(ctx, productID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrProductNotFound
+			}
+			return fmt.Errorf("postgres: lock product: %w", err)
 		}
-		return productSnapshot{}, fmt.Errorf("postgres: get product for cart: %w", err)
-	}
-	if !row.IsActive {
-		return productSnapshot{}, ErrProductNotFound
-	}
-	return productSnapshot{
-		ID:            row.ID,
-		Name:          row.Name,
-		PriceCents:    row.PriceCents,
-		ImageURL:      row.ImageUrl,
-		StockQuantity: row.StockQuantity,
-		IsActive:      row.IsActive,
-	}, nil
+		if !prod.IsActive {
+			return ErrProductNotFound
+		}
+		existing, err := q.GetCartItemQuantity(ctx, cartdb.GetCartItemQuantityParams{
+			UserID:    userID,
+			ProductID: productID,
+		})
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("postgres: get existing quantity: %w", err)
+		}
+		target := clampSum(existing, delta, prod.StockQuantity)
+		if _, err := q.UpsertCartItem(ctx, cartdb.UpsertCartItemParams{
+			UserID:    userID,
+			ProductID: productID,
+			Quantity:  target,
+		}); err != nil {
+			return fmt.Errorf("postgres: upsert cart item: %w", err)
+		}
+		result = Item{
+			ProductID:     productID,
+			Name:          prod.Name,
+			PriceCents:    prod.PriceCents,
+			ImageURL:      prod.ImageUrl,
+			Quantity:      target,
+			StockQuantity: prod.StockQuantity,
+		}
+		return nil
+	})
+	return result, err
 }
 
-// GetItemQuantity returns the current quantity of a cart line, or 0 if none.
-func (p *Postgres) GetItemQuantity(ctx context.Context, userID, productID uuid.UUID) (int32, error) {
-	q, err := p.q.GetCartItemQuantity(ctx, cartdb.GetCartItemQuantityParams{
-		UserID:    userID,
-		ProductID: productID,
-	})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, nil
+// SetItem implements the atomic set-with-stock-check described on Repository.
+func (p *Postgres) SetItem(ctx context.Context, userID, productID uuid.UUID, quantity int32) (Item, error) {
+	var result Item
+	err := pgx.BeginFunc(ctx, p.pool, func(tx pgx.Tx) error {
+		q := p.q.WithTx(tx)
+		prod, err := q.LockProductForCart(ctx, productID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrProductNotFound
+			}
+			return fmt.Errorf("postgres: lock product: %w", err)
 		}
-		return 0, fmt.Errorf("postgres: get cart item quantity: %w", err)
-	}
-	return q, nil
-}
-
-// UpsertItem inserts or updates the cart line to the given quantity.
-func (p *Postgres) UpsertItem(ctx context.Context, userID, productID uuid.UUID, quantity int32) error {
-	_, err := p.q.UpsertCartItem(ctx, cartdb.UpsertCartItemParams{
-		UserID:    userID,
-		ProductID: productID,
-		Quantity:  quantity,
+		if !prod.IsActive {
+			return ErrProductNotFound
+		}
+		if quantity > prod.StockQuantity {
+			return ErrOverStock
+		}
+		if _, err := q.UpsertCartItem(ctx, cartdb.UpsertCartItemParams{
+			UserID:    userID,
+			ProductID: productID,
+			Quantity:  quantity,
+		}); err != nil {
+			return fmt.Errorf("postgres: upsert cart item: %w", err)
+		}
+		result = Item{
+			ProductID:     productID,
+			Name:          prod.Name,
+			PriceCents:    prod.PriceCents,
+			ImageURL:      prod.ImageUrl,
+			Quantity:      quantity,
+			StockQuantity: prod.StockQuantity,
+		}
+		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("postgres: upsert cart item: %w", err)
-	}
-	return nil
+	return result, err
 }
 
 // DeleteItem removes a cart line.
@@ -101,4 +137,92 @@ func (p *Postgres) DeleteItem(ctx context.Context, userID, productID uuid.UUID) 
 		return fmt.Errorf("postgres: delete cart item: %w", err)
 	}
 	return nil
+}
+
+// MergeItems applies a batch of guest items inside one transaction.
+//
+// Lock acquisition order is sorted by ProductID to keep it deterministic:
+// two concurrent merges with overlapping products in different input orders
+// would otherwise risk a circular FOR UPDATE wait (deadlock).
+//
+// The final cart read happens INSIDE the transaction so a post-write read
+// failure rolls back the whole merge — otherwise a caller retry could
+// double-count guest items into the server cart.
+func (p *Postgres) MergeItems(ctx context.Context, userID uuid.UUID, items []MergeItem) (Cart, error) {
+	sortedItems := make([]MergeItem, len(items))
+	copy(sortedItems, items)
+	slices.SortFunc(sortedItems, func(a, b MergeItem) int {
+		return bytes.Compare(a.ProductID[:], b.ProductID[:])
+	})
+
+	var result Cart
+	err := pgx.BeginFunc(ctx, p.pool, func(tx pgx.Tx) error {
+		q := p.q.WithTx(tx)
+		for _, in := range sortedItems {
+			if in.Quantity < 1 {
+				continue
+			}
+			prod, err := q.LockProductForCart(ctx, in.ProductID)
+			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					continue
+				}
+				return fmt.Errorf("postgres: merge lock product: %w", err)
+			}
+			if !prod.IsActive {
+				continue
+			}
+			existing, err := q.GetCartItemQuantity(ctx, cartdb.GetCartItemQuantityParams{
+				UserID:    userID,
+				ProductID: in.ProductID,
+			})
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return fmt.Errorf("postgres: merge get existing: %w", err)
+			}
+			target := clampSum(existing, in.Quantity, prod.StockQuantity)
+			if _, err := q.UpsertCartItem(ctx, cartdb.UpsertCartItemParams{
+				UserID:    userID,
+				ProductID: in.ProductID,
+				Quantity:  target,
+			}); err != nil {
+				return fmt.Errorf("postgres: merge upsert: %w", err)
+			}
+		}
+		rows, err := q.GetCartItems(ctx, userID)
+		if err != nil {
+			return fmt.Errorf("postgres: merge get final cart: %w", err)
+		}
+		out := make([]Item, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, Item{
+				ProductID:     r.ProductID,
+				Name:          r.Name,
+				PriceCents:    r.PriceCents,
+				ImageURL:      r.ImageUrl,
+				Quantity:      r.Quantity,
+				StockQuantity: r.StockQuantity,
+			})
+		}
+		result = Cart{Items: out}
+		return nil
+	})
+	if err != nil {
+		return Cart{}, err
+	}
+	if result.Items == nil {
+		result.Items = []Item{}
+	}
+	return result, nil
+}
+
+// clampSum returns min(existing+delta, stock) computed in int64 so the sum
+// can't silently wrap an int32 (e.g. a malicious client passing math.MaxInt32
+// when existing is already large would otherwise overflow to a negative
+// number and bypass the stock check).
+func clampSum(existing, delta, stock int32) int32 {
+	sum := int64(existing) + int64(delta)
+	if sum > int64(stock) {
+		return stock
+	}
+	return int32(sum)
 }

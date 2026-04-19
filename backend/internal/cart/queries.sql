@@ -16,6 +16,15 @@ SELECT id, name, price_cents, image_url, stock_quantity, is_active
 FROM products
 WHERE id = $1;
 
+-- LockProductForCart selects the product row with FOR UPDATE so concurrent
+-- cart writers serialize on the product. Used inside cart Add/Set/Merge
+-- transactions to make the read-then-clamp-then-write sequence race-free.
+-- name: LockProductForCart :one
+SELECT id, name, price_cents, image_url, stock_quantity, is_active
+FROM products
+WHERE id = $1
+FOR UPDATE;
+
 -- name: UpsertCartItem :one
 INSERT INTO cart_items (user_id, product_id, quantity)
 VALUES ($1, $2, $3)
