@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router"
 import { StockBadge, useProduct } from "@/entities/product"
+import { AddToCartButton } from "@/features/cart-actions"
 import { formatPrice } from "@/shared/lib/format-price"
 import { Skeleton } from "@/shared/ui/skeleton"
 
@@ -74,6 +75,15 @@ export function ProductDetailPage() {
               </div>
             )}
           </dl>
+          <AddToCartButton
+            product={{
+              id: data.id,
+              name: data.name,
+              priceCents: data.priceCents,
+              imageUrl: data.imageUrl,
+              stockQuantity: data.stockQuantity,
+            }}
+          />
         </div>
       </div>
     </main>
