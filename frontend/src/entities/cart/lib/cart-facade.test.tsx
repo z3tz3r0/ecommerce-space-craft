@@ -22,7 +22,7 @@ function wrapper({ children }: { children: ReactNode }) {
 
 function resetStore() {
   useGuestCartStore.setState({ items: [] })
-  localStorage.clear()
+  localStorage.removeItem("guest-cart")
 }
 
 describe("useCart facade", () => {
