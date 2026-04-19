@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -19,16 +18,20 @@ type Postgres struct {
 	q *authdb.Queries
 }
 
+var _ Repository = (*Postgres)(nil)
+
 // NewPostgres wraps a pgxpool.Pool with the sqlc-generated Queries.
 func NewPostgres(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{q: authdb.New(pool)}
 }
 
 // CreateUser inserts a new user and returns the stored record. A unique
-// constraint violation on email maps to ErrEmailTaken.
+// constraint violation on email maps to ErrEmailTaken. Email normalization
+// (lowercase + trim) is the caller's responsibility — the citext column
+// is case-insensitive but the service layer normalizes for consistency.
 func (p *Postgres) CreateUser(ctx context.Context, email, passwordHash string) (userRecord, error) {
 	row, err := p.q.CreateUser(ctx, authdb.CreateUserParams{
-		Email:        strings.ToLower(strings.TrimSpace(email)),
+		Email:        email,
 		PasswordHash: passwordHash,
 	})
 	if err != nil {
@@ -49,8 +52,9 @@ func (p *Postgres) CreateUser(ctx context.Context, email, passwordHash string) (
 
 // GetUserByEmail returns the stored user record for the given email
 // (case-insensitive via citext), or ErrUserNotFound if none exists.
+// The caller must normalize the email — citext makes that mostly cosmetic.
 func (p *Postgres) GetUserByEmail(ctx context.Context, email string) (userRecord, error) {
-	row, err := p.q.GetUserByEmail(ctx, strings.ToLower(strings.TrimSpace(email)))
+	row, err := p.q.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return userRecord{}, ErrUserNotFound

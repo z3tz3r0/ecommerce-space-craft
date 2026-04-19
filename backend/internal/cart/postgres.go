@@ -17,6 +17,8 @@ type Postgres struct {
 	q *cartdb.Queries
 }
 
+var _ Repository = (*Postgres)(nil)
+
 // NewPostgres wraps a pgxpool.Pool with the sqlc-generated Queries.
 func NewPostgres(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{q: cartdb.New(pool)}

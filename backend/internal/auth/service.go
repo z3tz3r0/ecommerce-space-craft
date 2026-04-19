@@ -34,7 +34,7 @@ func (s *Service) Signup(ctx context.Context, email, password string) (User, err
 	}
 	rec, err := s.repo.CreateUser(ctx, normalisedEmail, hash)
 	if err != nil {
-		return User{}, err
+		return User{}, fmt.Errorf("auth: signup create user: %w", err)
 	}
 	return User{
 		ID:        rec.ID,

@@ -46,18 +46,15 @@ func Load() (Config, error) {
 }
 
 func parseLogLevel(s string) (slog.Level, error) {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "", "info":
+	trimmed := strings.TrimSpace(s)
+	if trimmed == "" {
 		return slog.LevelInfo, nil
-	case "debug":
-		return slog.LevelDebug, nil
-	case "warn", "warning":
-		return slog.LevelWarn, nil
-	case "error":
-		return slog.LevelError, nil
-	default:
-		return 0, fmt.Errorf("config: LOG_LEVEL %q invalid (expected debug|info|warn|error)", s)
 	}
+	var lvl slog.Level
+	if err := lvl.UnmarshalText([]byte(strings.ToUpper(trimmed))); err != nil {
+		return 0, fmt.Errorf("config: LOG_LEVEL %q invalid (expected debug|info|warn|error): %w", s, err)
+	}
+	return lvl, nil
 }
 
 func parseOrigins(s string) []string {

@@ -40,7 +40,7 @@ func (s *Service) Add(ctx context.Context, userID, productID uuid.UUID, quantity
 	}
 	prod, err := s.repo.GetProduct(ctx, productID)
 	if err != nil {
-		return Item{}, err
+		return Item{}, fmt.Errorf("cart: get product: %w", err)
 	}
 	existing, err := s.repo.GetItemQuantity(ctx, userID, productID)
 	if err != nil {
@@ -71,7 +71,7 @@ func (s *Service) Set(ctx context.Context, userID, productID uuid.UUID, quantity
 	}
 	prod, err := s.repo.GetProduct(ctx, productID)
 	if err != nil {
-		return Item{}, err
+		return Item{}, fmt.Errorf("cart: get product: %w", err)
 	}
 	if quantity > prod.StockQuantity {
 		return Item{}, ErrOverStock
