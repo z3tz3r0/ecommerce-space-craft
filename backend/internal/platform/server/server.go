@@ -34,20 +34,22 @@ type API struct {
 	Mux  *http.ServeMux
 }
 
-// New creates the API with logging + recover + CORS middleware applied.
+// New creates the API with logging + recover middleware applied to every
+// registered Huma operation. CORS is intentionally NOT a Huma middleware —
+// see CORS for why; cmd/api wraps the resulting mux with CORS at the
+// http.Handler level.
 //
 // Middleware ordering: requestLog wraps recover so the deferred log line
 // runs *after* recover has written the 500 response — that way panicked
 // requests still get a log line with the resulting 500 status, not the
 // pre-panic 0.
-func New(title, version string, logger *slog.Logger, corsOrigins []string) *API {
+func New(title, version string, logger *slog.Logger) *API {
 	mux := http.NewServeMux()
 	cfg := huma.DefaultConfig(title, version)
 	api := humago.New(mux, cfg)
 
 	api.UseMiddleware(requestLogMiddleware(logger))
 	api.UseMiddleware(recoverMiddleware(api, logger))
-	api.UseMiddleware(corsMiddleware(corsOrigins))
 
 	RegisterHealth(api)
 
@@ -88,32 +90,43 @@ func requestLogMiddleware(logger *slog.Logger) func(huma.Context, func(huma.Cont
 	}
 }
 
-func corsMiddleware(allowed []string) func(huma.Context, func(huma.Context)) {
-	// Normalise the configured allowlist once: trim whitespace and any
-	// trailing slash so values pasted with or without a trailing "/" match
-	// the browser's Origin header (which never carries one).
-	normalisedAllowed := make([]string, 0, len(allowed))
+// CORS returns a stdlib http.Handler middleware that sets CORS headers for
+// allowed origins and short-circuits OPTIONS preflights with 204.
+//
+// It MUST live at the http.Handler level (not as a Huma middleware) because
+// Huma middlewares only fire for registered operations. Browser preflights
+// arrive as OPTIONS to paths registered for POST/PATCH/DELETE — those aren't
+// Huma operations, so a Huma-level CORS middleware never sees them and the
+// browser blocks the real request with "no Access-Control-Allow-Origin".
+//
+// The allowlist is normalised at construction (trim whitespace and trailing
+// slash) so the configured value matches the browser's Origin header
+// (which never carries a trailing slash).
+func CORS(allowed []string) func(http.Handler) http.Handler {
+	normalised := make([]string, 0, len(allowed))
 	for _, a := range allowed {
 		a = strings.TrimSpace(a)
 		a = strings.TrimRight(a, "/")
 		if a != "" {
-			normalisedAllowed = append(normalisedAllowed, a)
+			normalised = append(normalised, a)
 		}
 	}
 
-	return func(ctx huma.Context, next func(huma.Context)) {
-		origin := strings.TrimRight(ctx.Header("Origin"), "/")
-		if origin != "" && slices.Contains(normalisedAllowed, origin) {
-			ctx.SetHeader("Access-Control-Allow-Origin", origin)
-			ctx.SetHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			ctx.SetHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
-			ctx.SetHeader("Access-Control-Allow-Credentials", "true")
-			ctx.SetHeader("Vary", "Origin")
-		}
-		if ctx.Method() == http.MethodOptions {
-			ctx.SetStatus(http.StatusNoContent)
-			return
-		}
-		next(ctx)
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := strings.TrimRight(r.Header.Get("Origin"), "/")
+			if origin != "" && slices.Contains(normalised, origin) {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+				w.Header().Set("Vary", "Origin")
+			}
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
 	}
 }

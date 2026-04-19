@@ -25,7 +25,7 @@ import (
 
 func main() {
 	logger := logging.New("dev", slog.LevelError)
-	api := server.New("Spacecraft Store API", "0.1.0", logger, nil)
+	api := server.New("Spacecraft Store API", "0.1.0", logger)
 
 	sess := scs.New()
 	sess.Store = memstore.New()
