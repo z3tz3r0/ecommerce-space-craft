@@ -12,9 +12,12 @@ export function LogoutButton() {
   async function handleClick() {
     try {
       await logout.mutateAsync()
+    } catch {
+      // Server logout failed; client still clears state in `finally` so the
+      // user sees a logged-out UI. Surfacing the error here would be wrong —
+      // any subsequent `useAuth()` read will surface 401 if the session does
+      // somehow persist.
     } finally {
-      // Even if the server call errored we still want the client to
-      // reflect a logged-out state.
       qc.removeQueries({ queryKey: cartKeys.server() })
       useGuestCartStore.getState().clear()
       navigate("/")
