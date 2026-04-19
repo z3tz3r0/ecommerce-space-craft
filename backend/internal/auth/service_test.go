@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/auth"
+	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/auth/authtest"
 )
 
 func validHash(t *testing.T) string {
@@ -24,15 +25,15 @@ func validHash(t *testing.T) string {
 }
 
 func TestService_Signup_WeakPassword_Returns_ErrWeakPassword(t *testing.T) {
-	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{})
+	svc := authtest.NewService(t, authtest.Adapter{})
 	_, err := svc.Signup(context.Background(), "a@b.com", "short")
 	require.ErrorIs(t, err, auth.ErrWeakPassword)
 }
 
 func TestService_Signup_EmailTaken_Returns_ErrEmailTaken(t *testing.T) {
-	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
-		Create: func(_ context.Context, _, _ string) (auth.FakeRecord, error) {
-			return auth.FakeRecord{}, auth.ErrEmailTaken
+	svc := authtest.NewService(t, authtest.Adapter{
+		Create: func(_ context.Context, _, _ string) (authtest.Record, error) {
+			return authtest.Record{}, auth.ErrEmailTaken
 		},
 	})
 	_, err := svc.Signup(context.Background(), "a@b.com", "hunter2!!")
@@ -43,13 +44,13 @@ func TestService_Signup_Success_ReturnsUserAndHashesPassword(t *testing.T) {
 	uid := uuid.New()
 	now := time.Now()
 	var observedHash string
-	adapter := auth.FakeRepoAdapter{
-		Create: func(_ context.Context, email, hash string) (auth.FakeRecord, error) {
+	adapter := authtest.Adapter{
+		Create: func(_ context.Context, email, hash string) (authtest.Record, error) {
 			observedHash = hash
-			return auth.FakeRecord{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
+			return authtest.Record{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
 		},
 	}
-	svc := auth.NewServiceFake(t, adapter)
+	svc := authtest.NewService(t, adapter)
 
 	user, err := svc.Signup(context.Background(), "A@B.com", "hunter2!!")
 	require.NoError(t, err)
@@ -60,9 +61,9 @@ func TestService_Signup_Success_ReturnsUserAndHashesPassword(t *testing.T) {
 }
 
 func TestService_Login_UnknownEmail_Returns_ErrInvalidCredentials(t *testing.T) {
-	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
-		GetByEmail: func(_ context.Context, _ string) (auth.FakeRecord, error) {
-			return auth.FakeRecord{}, auth.ErrUserNotFound
+	svc := authtest.NewService(t, authtest.Adapter{
+		GetByEmail: func(_ context.Context, _ string) (authtest.Record, error) {
+			return authtest.Record{}, auth.ErrUserNotFound
 		},
 	})
 	_, err := svc.Login(context.Background(), "nobody@x.com", "hunter2!!")
@@ -71,9 +72,9 @@ func TestService_Login_UnknownEmail_Returns_ErrInvalidCredentials(t *testing.T) 
 
 func TestService_Login_RepoOtherError_PropagatesWrapped(t *testing.T) {
 	boom := errors.New("db exploded")
-	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
-		GetByEmail: func(_ context.Context, _ string) (auth.FakeRecord, error) {
-			return auth.FakeRecord{}, boom
+	svc := authtest.NewService(t, authtest.Adapter{
+		GetByEmail: func(_ context.Context, _ string) (authtest.Record, error) {
+			return authtest.Record{}, boom
 		},
 	})
 	_, err := svc.Login(context.Background(), "a@b.com", "hunter2!!")
@@ -85,9 +86,9 @@ func TestService_Login_RepoOtherError_PropagatesWrapped(t *testing.T) {
 func TestService_Login_WrongPassword_Returns_ErrInvalidCredentials(t *testing.T) {
 	uid := uuid.New()
 	now := time.Now()
-	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
-		GetByEmail: func(_ context.Context, _ string) (auth.FakeRecord, error) {
-			return auth.FakeRecord{ID: uid, Email: "a@b.com", PasswordHash: validHash(t), CreatedAt: now, UpdatedAt: now}, nil
+	svc := authtest.NewService(t, authtest.Adapter{
+		GetByEmail: func(_ context.Context, _ string) (authtest.Record, error) {
+			return authtest.Record{ID: uid, Email: "a@b.com", PasswordHash: validHash(t), CreatedAt: now, UpdatedAt: now}, nil
 		},
 	})
 	_, err := svc.Login(context.Background(), "a@b.com", "wrong-password")
@@ -98,9 +99,9 @@ func TestService_Login_CorrectPassword_ReturnsUser(t *testing.T) {
 	uid := uuid.New()
 	now := time.Now()
 	hash := validHash(t)
-	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
-		GetByEmail: func(_ context.Context, email string) (auth.FakeRecord, error) {
-			return auth.FakeRecord{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
+	svc := authtest.NewService(t, authtest.Adapter{
+		GetByEmail: func(_ context.Context, email string) (authtest.Record, error) {
+			return authtest.Record{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
 		},
 	})
 	user, err := svc.Login(context.Background(), "a@b.com", "hunter2!!")
@@ -109,9 +110,9 @@ func TestService_Login_CorrectPassword_ReturnsUser(t *testing.T) {
 }
 
 func TestService_GetByID_UnknownUser_WrapsErr(t *testing.T) {
-	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
-		GetByID: func(_ context.Context, _ uuid.UUID) (auth.FakeRecord, error) {
-			return auth.FakeRecord{}, auth.ErrUserNotFound
+	svc := authtest.NewService(t, authtest.Adapter{
+		GetByID: func(_ context.Context, _ uuid.UUID) (authtest.Record, error) {
+			return authtest.Record{}, auth.ErrUserNotFound
 		},
 	})
 	_, err := svc.GetByID(context.Background(), uuid.New())
@@ -120,9 +121,9 @@ func TestService_GetByID_UnknownUser_WrapsErr(t *testing.T) {
 
 func TestService_GetByID_RepoOtherError_PropagatesWrapped(t *testing.T) {
 	boom := errors.New("db exploded")
-	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
-		GetByID: func(_ context.Context, _ uuid.UUID) (auth.FakeRecord, error) {
-			return auth.FakeRecord{}, boom
+	svc := authtest.NewService(t, authtest.Adapter{
+		GetByID: func(_ context.Context, _ uuid.UUID) (authtest.Record, error) {
+			return authtest.Record{}, boom
 		},
 	})
 	_, err := svc.GetByID(context.Background(), uuid.New())

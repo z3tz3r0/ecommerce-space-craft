@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"testing"
 
 	"github.com/google/uuid"
 )
@@ -128,69 +127,3 @@ func (s *Service) Merge(ctx context.Context, userID uuid.UUID, items []MergeItem
 	return s.Get(ctx, userID)
 }
 
-// --- test-only helpers -------------------------------------------------
-// Exported so *_test.go files can construct fakes without touching the
-// package-private Repository / productSnapshot types. The *testing.T
-// parameter on NewServiceFake prevents misuse from non-test code.
-
-type FakeProduct struct {
-	ID            uuid.UUID
-	Name          string
-	PriceCents    int64
-	ImageURL      *string
-	StockQuantity int32
-	IsActive      bool
-}
-
-type FakeRepoAdapter struct {
-	GetItems        func(ctx context.Context, userID uuid.UUID) ([]Item, error)
-	GetProduct      func(ctx context.Context, productID uuid.UUID) (FakeProduct, error)
-	GetItemQuantity func(ctx context.Context, userID, productID uuid.UUID) (int32, error)
-	UpsertItem      func(ctx context.Context, userID, productID uuid.UUID, quantity int32) error
-	DeleteItem      func(ctx context.Context, userID, productID uuid.UUID) error
-}
-
-func NewServiceFake(_ *testing.T, a FakeRepoAdapter) *Service {
-	return NewService(fakeRepoImpl{a: a})
-}
-
-type fakeRepoImpl struct{ a FakeRepoAdapter }
-
-func (f fakeRepoImpl) GetItems(ctx context.Context, userID uuid.UUID) ([]Item, error) {
-	if f.a.GetItems == nil {
-		return nil, nil
-	}
-	return f.a.GetItems(ctx, userID)
-}
-
-func (f fakeRepoImpl) GetProduct(ctx context.Context, productID uuid.UUID) (productSnapshot, error) {
-	if f.a.GetProduct == nil {
-		return productSnapshot{}, ErrProductNotFound
-	}
-	p, err := f.a.GetProduct(ctx, productID)
-	if err != nil {
-		return productSnapshot{}, err
-	}
-	return productSnapshot(p), nil
-}
-
-func (f fakeRepoImpl) GetItemQuantity(ctx context.Context, userID, productID uuid.UUID) (int32, error) {
-	if f.a.GetItemQuantity == nil {
-		return 0, nil
-	}
-	return f.a.GetItemQuantity(ctx, userID, productID)
-}
-
-func (f fakeRepoImpl) UpsertItem(ctx context.Context, userID, productID uuid.UUID, quantity int32) error {
-	if f.a.UpsertItem == nil {
-		return nil
-	}
-	return f.a.UpsertItem(ctx, userID, productID, quantity)
-}
-
-func (f fakeRepoImpl) DeleteItem(ctx context.Context, userID, productID uuid.UUID) error {
-	if f.a.DeleteItem == nil {
-		return nil
-	}
-	return f.a.DeleteItem(ctx, userID, productID)
-}

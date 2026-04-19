@@ -6,10 +6,15 @@ import (
 	"github.com/google/uuid"
 )
 
-// productSnapshot is the repository-layer view of a product that the cart
-// service needs: enough to validate stock and render lines. It is NOT
-// the catalog Product — this keeps the two contexts independent.
-type productSnapshot struct {
+// ProductSnapshot is the repository-layer view of a product that the cart
+// service needs: enough to validate stock and render lines. It is NOT the
+// catalog Product — keeping a parallel type preserves bounded-context
+// independence between cart and catalog.
+//
+// Exported so external packages — the spec-extraction binary cmd/openapi,
+// in particular — can implement no-op Repository fakes without needing
+// access to package-private types.
+type ProductSnapshot struct {
 	ID            uuid.UUID
 	Name          string
 	PriceCents    int64
@@ -26,7 +31,7 @@ type Repository interface {
 
 	// GetProduct returns the product snapshot used for stock validation.
 	// Returns ErrProductNotFound if the product is missing or inactive.
-	GetProduct(ctx context.Context, productID uuid.UUID) (productSnapshot, error)
+	GetProduct(ctx context.Context, productID uuid.UUID) (ProductSnapshot, error)
 
 	// GetItemQuantity returns the quantity of a specific cart line, or 0
 	// if the line does not exist.

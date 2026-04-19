@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/auth"
+	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/auth/authtest"
 )
 
 // newTestAPI builds a Huma API with an in-memory session store so tests
@@ -46,9 +47,9 @@ func cookieJar(t *testing.T) http.CookieJar {
 func TestHandler_Signup_Success_SetsSessionCookie(t *testing.T) {
 	uid := uuid.New()
 	now := time.Now()
-	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
-		Create: func(_ context.Context, email, hash string) (auth.FakeRecord, error) {
-			return auth.FakeRecord{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
+	svc := authtest.NewService(t, authtest.Adapter{
+		Create: func(_ context.Context, email, hash string) (authtest.Record, error) {
+			return authtest.Record{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
 		},
 	})
 	srv := httptest.NewServer(newTestAPI(t, svc))
@@ -72,7 +73,7 @@ func TestHandler_Signup_Success_SetsSessionCookie(t *testing.T) {
 }
 
 func TestHandler_Signup_WeakPassword_Returns422(t *testing.T) {
-	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{})
+	svc := authtest.NewService(t, authtest.Adapter{})
 	srv := httptest.NewServer(newTestAPI(t, svc))
 	defer srv.Close()
 
@@ -87,9 +88,9 @@ func TestHandler_Signup_WeakPassword_Returns422(t *testing.T) {
 }
 
 func TestHandler_Login_WrongPassword_Returns401(t *testing.T) {
-	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
-		GetByEmail: func(_ context.Context, _ string) (auth.FakeRecord, error) {
-			return auth.FakeRecord{}, auth.ErrUserNotFound
+	svc := authtest.NewService(t, authtest.Adapter{
+		GetByEmail: func(_ context.Context, _ string) (authtest.Record, error) {
+			return authtest.Record{}, auth.ErrUserNotFound
 		},
 	})
 	srv := httptest.NewServer(newTestAPI(t, svc))
@@ -103,7 +104,7 @@ func TestHandler_Login_WrongPassword_Returns401(t *testing.T) {
 }
 
 func TestHandler_Me_NoCookie_Returns401(t *testing.T) {
-	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{})
+	svc := authtest.NewService(t, authtest.Adapter{})
 	srv := httptest.NewServer(newTestAPI(t, svc))
 	defer srv.Close()
 
@@ -116,15 +117,15 @@ func TestHandler_Me_NoCookie_Returns401(t *testing.T) {
 func TestHandler_SignupThenMe_ReturnsUserWithCookie(t *testing.T) {
 	uid := uuid.New()
 	now := time.Now()
-	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
-		Create: func(_ context.Context, email, hash string) (auth.FakeRecord, error) {
-			return auth.FakeRecord{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
+	svc := authtest.NewService(t, authtest.Adapter{
+		Create: func(_ context.Context, email, hash string) (authtest.Record, error) {
+			return authtest.Record{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
 		},
-		GetByID: func(_ context.Context, id uuid.UUID) (auth.FakeRecord, error) {
+		GetByID: func(_ context.Context, id uuid.UUID) (authtest.Record, error) {
 			if id == uid {
-				return auth.FakeRecord{ID: uid, Email: "a@b.com", CreatedAt: now, UpdatedAt: now}, nil
+				return authtest.Record{ID: uid, Email: "a@b.com", CreatedAt: now, UpdatedAt: now}, nil
 			}
-			return auth.FakeRecord{}, auth.ErrUserNotFound
+			return authtest.Record{}, auth.ErrUserNotFound
 		},
 	})
 	srv := httptest.NewServer(newTestAPI(t, svc))
@@ -157,12 +158,12 @@ func TestHandler_SignupThenMe_ReturnsUserWithCookie(t *testing.T) {
 func TestHandler_Logout_ClearsSession(t *testing.T) {
 	uid := uuid.New()
 	now := time.Now()
-	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
-		Create: func(_ context.Context, email, hash string) (auth.FakeRecord, error) {
-			return auth.FakeRecord{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
+	svc := authtest.NewService(t, authtest.Adapter{
+		Create: func(_ context.Context, email, hash string) (authtest.Record, error) {
+			return authtest.Record{ID: uid, Email: email, PasswordHash: hash, CreatedAt: now, UpdatedAt: now}, nil
 		},
-		GetByID: func(_ context.Context, _ uuid.UUID) (auth.FakeRecord, error) {
-			return auth.FakeRecord{ID: uid, Email: "a@b.com", CreatedAt: now, UpdatedAt: now}, nil
+		GetByID: func(_ context.Context, _ uuid.UUID) (authtest.Record, error) {
+			return authtest.Record{ID: uid, Email: "a@b.com", CreatedAt: now, UpdatedAt: now}, nil
 		},
 	})
 	srv := httptest.NewServer(newTestAPI(t, svc))

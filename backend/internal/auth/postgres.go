@@ -29,7 +29,7 @@ func NewPostgres(pool *pgxpool.Pool) *Postgres {
 // constraint violation on email maps to ErrEmailTaken. Email normalization
 // (lowercase + trim) is the caller's responsibility — the citext column
 // is case-insensitive but the service layer normalizes for consistency.
-func (p *Postgres) CreateUser(ctx context.Context, email, passwordHash string) (userRecord, error) {
+func (p *Postgres) CreateUser(ctx context.Context, email, passwordHash string) (UserRecord, error) {
 	row, err := p.q.CreateUser(ctx, authdb.CreateUserParams{
 		Email:        email,
 		PasswordHash: passwordHash,
@@ -37,11 +37,11 @@ func (p *Postgres) CreateUser(ctx context.Context, email, passwordHash string) (
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return userRecord{}, ErrEmailTaken
+			return UserRecord{}, ErrEmailTaken
 		}
-		return userRecord{}, fmt.Errorf("postgres: create user: %w", err)
+		return UserRecord{}, fmt.Errorf("postgres: create user: %w", err)
 	}
-	return userRecord{
+	return UserRecord{
 		ID:           row.ID,
 		Email:        row.Email,
 		PasswordHash: row.PasswordHash,
@@ -53,15 +53,15 @@ func (p *Postgres) CreateUser(ctx context.Context, email, passwordHash string) (
 // GetUserByEmail returns the stored user record for the given email
 // (case-insensitive via citext), or ErrUserNotFound if none exists.
 // The caller must normalize the email — citext makes that mostly cosmetic.
-func (p *Postgres) GetUserByEmail(ctx context.Context, email string) (userRecord, error) {
+func (p *Postgres) GetUserByEmail(ctx context.Context, email string) (UserRecord, error) {
 	row, err := p.q.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return userRecord{}, ErrUserNotFound
+			return UserRecord{}, ErrUserNotFound
 		}
-		return userRecord{}, fmt.Errorf("postgres: get user by email: %w", err)
+		return UserRecord{}, fmt.Errorf("postgres: get user by email: %w", err)
 	}
-	return userRecord{
+	return UserRecord{
 		ID:           row.ID,
 		Email:        row.Email,
 		PasswordHash: row.PasswordHash,
@@ -72,15 +72,15 @@ func (p *Postgres) GetUserByEmail(ctx context.Context, email string) (userRecord
 
 // GetUserByID returns the stored user record for the given UUID, or
 // ErrUserNotFound if none exists.
-func (p *Postgres) GetUserByID(ctx context.Context, id uuid.UUID) (userRecord, error) {
+func (p *Postgres) GetUserByID(ctx context.Context, id uuid.UUID) (UserRecord, error) {
 	row, err := p.q.GetUserByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return userRecord{}, ErrUserNotFound
+			return UserRecord{}, ErrUserNotFound
 		}
-		return userRecord{}, fmt.Errorf("postgres: get user by id: %w", err)
+		return UserRecord{}, fmt.Errorf("postgres: get user by id: %w", err)
 	}
-	return userRecord{
+	return UserRecord{
 		ID:           row.ID,
 		Email:        row.Email,
 		PasswordHash: row.PasswordHash,

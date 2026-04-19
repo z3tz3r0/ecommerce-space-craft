@@ -45,18 +45,18 @@ func (p *Postgres) GetItems(ctx context.Context, userID uuid.UUID) ([]Item, erro
 }
 
 // GetProduct returns the live product snapshot or ErrProductNotFound.
-func (p *Postgres) GetProduct(ctx context.Context, productID uuid.UUID) (productSnapshot, error) {
+func (p *Postgres) GetProduct(ctx context.Context, productID uuid.UUID) (ProductSnapshot, error) {
 	row, err := p.q.GetProductForCart(ctx, productID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return productSnapshot{}, ErrProductNotFound
+			return ProductSnapshot{}, ErrProductNotFound
 		}
-		return productSnapshot{}, fmt.Errorf("postgres: get product for cart: %w", err)
+		return ProductSnapshot{}, fmt.Errorf("postgres: get product for cart: %w", err)
 	}
 	if !row.IsActive {
-		return productSnapshot{}, ErrProductNotFound
+		return ProductSnapshot{}, ErrProductNotFound
 	}
-	return productSnapshot{
+	return ProductSnapshot{
 		ID:            row.ID,
 		Name:          row.Name,
 		PriceCents:    row.PriceCents,
