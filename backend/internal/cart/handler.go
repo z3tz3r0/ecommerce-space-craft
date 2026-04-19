@@ -9,8 +9,13 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/auth"
+	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/platform/server"
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/platform/session"
 )
+
+// cartSecurity is the OpenAPI Security entry shared by every cart operation
+// since they're all gated by RequireAuth and use the same session cookie.
+var cartSecurity = []map[string][]string{{server.SessionSecurityScheme: {}}}
 
 // Register registers all cart endpoints. All endpoints are gated by
 // auth.RequireAuth.
@@ -24,6 +29,7 @@ func Register(api huma.API, svc *Service, authSvc *auth.Service, sess session.Ma
 		Summary:     "Fetch the authenticated user's cart",
 		Tags:        []string{"Cart"},
 		Middlewares: huma.Middlewares{requireAuth},
+		Security:    cartSecurity,
 	}, func(ctx context.Context, _ *struct{}) (*CartOutput, error) {
 		u := auth.MustCurrentUser(ctx)
 		c, err := svc.Get(ctx, u.ID)
@@ -40,6 +46,7 @@ func Register(api huma.API, svc *Service, authSvc *auth.Service, sess session.Ma
 		Summary:     "Add or increment a cart line (clamped to stock)",
 		Tags:        []string{"Cart"},
 		Middlewares: huma.Middlewares{requireAuth},
+		Security:    cartSecurity,
 	}, func(ctx context.Context, in *AddCartItemInput) (*CartItemOutput, error) {
 		u := auth.MustCurrentUser(ctx)
 		pid, err := uuid.Parse(in.Body.ProductID)
@@ -60,6 +67,7 @@ func Register(api huma.API, svc *Service, authSvc *auth.Service, sess session.Ma
 		Summary:     "Set the exact quantity of a cart line",
 		Tags:        []string{"Cart"},
 		Middlewares: huma.Middlewares{requireAuth},
+		Security:    cartSecurity,
 	}, func(ctx context.Context, in *SetCartItemInput) (*CartItemOutput, error) {
 		u := auth.MustCurrentUser(ctx)
 		pid, err := uuid.Parse(in.ProductID)
@@ -81,6 +89,7 @@ func Register(api huma.API, svc *Service, authSvc *auth.Service, sess session.Ma
 		Tags:          []string{"Cart"},
 		DefaultStatus: http.StatusNoContent,
 		Middlewares:   huma.Middlewares{requireAuth},
+		Security:      cartSecurity,
 	}, func(ctx context.Context, in *RemoveCartItemInput) (*struct{}, error) {
 		u := auth.MustCurrentUser(ctx)
 		pid, err := uuid.Parse(in.ProductID)
@@ -100,6 +109,7 @@ func Register(api huma.API, svc *Service, authSvc *auth.Service, sess session.Ma
 		Summary:     "Merge a guest cart into the authenticated user's cart",
 		Tags:        []string{"Cart"},
 		Middlewares: huma.Middlewares{requireAuth},
+		Security:    cartSecurity,
 	}, func(ctx context.Context, in *MergeCartInput) (*CartOutput, error) {
 		u := auth.MustCurrentUser(ctx)
 		items := make([]MergeItem, 0, len(in.Body.Items))

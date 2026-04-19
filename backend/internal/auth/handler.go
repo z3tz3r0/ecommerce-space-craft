@@ -7,6 +7,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/platform/server"
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/platform/session"
 )
 
@@ -26,13 +27,18 @@ func Register(api huma.API, svc *Service, sess session.Manager, logger *slog.Log
 		Tags:          []string{"Auth"},
 		DefaultStatus: http.StatusCreated,
 	}, func(ctx context.Context, in *SignupInput) (*UserOutput, error) {
-		user, err := svc.Signup(ctx, in.Body.Email, in.Body.Password)
-		if err != nil {
-			return nil, mapError(logger, err)
-		}
+		// Renew the session token BEFORE creating the user. If RenewToken
+		// fails after a successful Signup, the user is created in the DB
+		// with no session — client retry hits ErrEmailTaken and the account
+		// is permanently stuck. Pre-rotating is safe because the userID
+		// isn't placed in the session until after Signup succeeds.
 		if err := sess.RenewToken(ctx); err != nil {
 			logger.Error("auth: renew token on signup", "err", err.Error())
 			return nil, huma.Error500InternalServerError("internal error")
+		}
+		user, err := svc.Signup(ctx, in.Body.Email, in.Body.Password)
+		if err != nil {
+			return nil, mapError(logger, err)
 		}
 		sess.Put(ctx, userIDKey, user.ID.String())
 		return &UserOutput{Body: user}, nil
@@ -79,6 +85,7 @@ func Register(api huma.API, svc *Service, sess session.Manager, logger *slog.Log
 		Summary:     "Fetch the currently authenticated user",
 		Tags:        []string{"Auth"},
 		Middlewares: huma.Middlewares{RequireAuth(api, sess, svc, logger)},
+		Security:    []map[string][]string{{server.SessionSecurityScheme: {}}},
 	}
 	huma.Register(api, meOp, func(ctx context.Context, _ *struct{}) (*UserOutput, error) {
 		return &UserOutput{Body: MustCurrentUser(ctx)}, nil

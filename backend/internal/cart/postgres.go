@@ -69,6 +69,13 @@ func (p *Postgres) AddItem(ctx context.Context, userID, productID uuid.UUID, del
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("postgres: get existing quantity: %w", err)
 		}
+		// Refuse the add when there's no headroom — otherwise we'd write a
+		// quantity=0 row (stock=0, no existing line) or perform a no-op
+		// write that burns a DB round-trip while the client's response says
+		// "added". Match Set's behaviour by signalling explicitly.
+		if existing >= prod.StockQuantity {
+			return ErrOverStock
+		}
 		target := clampSum(existing, delta, prod.StockQuantity)
 		if _, err := q.UpsertCartItem(ctx, cartdb.UpsertCartItemParams{
 			UserID:    userID,
@@ -178,6 +185,11 @@ func (p *Postgres) MergeItems(ctx context.Context, userID uuid.UUID, items []Mer
 			})
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				return fmt.Errorf("postgres: merge get existing: %w", err)
+			}
+			// Skip silently when there's no room — Merge is best-effort, so
+			// out-of-stock guest items just don't make it into the server cart.
+			if existing >= prod.StockQuantity {
+				continue
 			}
 			target := clampSum(existing, in.Quantity, prod.StockQuantity)
 			if _, err := q.UpsertCartItem(ctx, cartdb.UpsertCartItemParams{

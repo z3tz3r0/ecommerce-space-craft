@@ -46,6 +46,23 @@ type API struct {
 func New(title, version string, logger *slog.Logger) *API {
 	mux := http.NewServeMux()
 	cfg := huma.DefaultConfig(title, version)
+
+	// Declare the cookie-based session as a security scheme so the OpenAPI
+	// spec tells clients how to authenticate. Operations behind RequireAuth
+	// reference this scheme via huma.Operation.Security; openapi-typescript
+	// surfaces it in the generated FE client.
+	if cfg.Components == nil {
+		cfg.Components = &huma.Components{}
+	}
+	cfg.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
+		SessionSecurityScheme: {
+			Type:        "apiKey",
+			In:          "cookie",
+			Name:        "session",
+			Description: "Session cookie set on /api/auth/signup or /api/auth/login.",
+		},
+	}
+
 	api := humago.New(mux, cfg)
 
 	api.UseMiddleware(requestLogMiddleware(logger))
@@ -55,6 +72,12 @@ func New(title, version string, logger *slog.Logger) *API {
 
 	return &API{Huma: api, Mux: mux}
 }
+
+// SessionSecurityScheme is the OpenAPI key used to reference the session
+// cookie scheme from protected operations. Use it via:
+//
+//	Security: []map[string][]string{{server.SessionSecurityScheme: {}}}
+const SessionSecurityScheme = "session"
 
 func recoverMiddleware(api huma.API, logger *slog.Logger) func(huma.Context, func(huma.Context)) {
 	return func(ctx huma.Context, next func(huma.Context)) {
