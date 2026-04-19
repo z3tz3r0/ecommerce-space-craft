@@ -38,6 +38,9 @@ export const useGuestCartStore = create<GuestCartState>()(
           const next = [...state.items]
           const existing = next[idx]
           const nextQty = Math.min(existing.quantity + incoming, input.stockQuantity)
+          if (nextQty < 1) {
+            return { items: state.items.filter((i) => i.productId !== input.productId) }
+          }
           next[idx] = { ...existing, stockQuantity: input.stockQuantity, quantity: nextQty }
           return { items: next }
         })
@@ -51,7 +54,11 @@ export const useGuestCartStore = create<GuestCartState>()(
           }
           const next = [...state.items]
           const existing = next[idx]
-          next[idx] = { ...existing, quantity: Math.min(quantity, existing.stockQuantity) }
+          const nextQty = Math.min(quantity, existing.stockQuantity)
+          if (nextQty < 1) {
+            return { items: state.items.filter((i) => i.productId !== productId) }
+          }
+          next[idx] = { ...existing, quantity: nextQty }
           return { items: next }
         })
       },

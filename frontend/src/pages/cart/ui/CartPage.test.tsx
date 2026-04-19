@@ -21,9 +21,9 @@ describe("CartPage", () => {
       items: [],
       subtotalCents: 0,
       isLoading: false,
-      add: vi.fn(),
-      set: vi.fn(),
-      remove: vi.fn(),
+      add: vi.fn(async () => undefined),
+      set: vi.fn(async () => undefined),
+      remove: vi.fn(async () => undefined),
     })
     render(<CartPage />, { wrapper })
     expect(screen.getByRole("heading", { name: /empty/i })).toBeInTheDocument()
@@ -44,9 +44,9 @@ describe("CartPage", () => {
       ],
       subtotalCents: 200,
       isLoading: false,
-      add: vi.fn(),
-      set: vi.fn(),
-      remove: vi.fn(),
+      add: vi.fn(async () => undefined),
+      set: vi.fn(async () => undefined),
+      remove: vi.fn(async () => undefined),
     })
     render(<CartPage />, { wrapper })
     expect(screen.getByText("X-Wing")).toBeInTheDocument()
@@ -58,9 +58,9 @@ describe("CartPage", () => {
       items: [],
       subtotalCents: 0,
       isLoading: true,
-      add: vi.fn(),
-      set: vi.fn(),
-      remove: vi.fn(),
+      add: vi.fn(async () => undefined),
+      set: vi.fn(async () => undefined),
+      remove: vi.fn(async () => undefined),
     })
     render(<CartPage />, { wrapper })
     expect(screen.getByTestId("cart-loading")).toBeInTheDocument()
@@ -80,9 +80,9 @@ describe("CartPage", () => {
       ],
       subtotalCents: 100,
       isLoading: false,
-      add: vi.fn(),
-      set: vi.fn(),
-      remove: vi.fn(),
+      add: vi.fn(async () => undefined),
+      set: vi.fn(async () => undefined),
+      remove: vi.fn(async () => undefined),
     })
     render(<CartPage />, { wrapper })
     expect(screen.getByRole("button", { name: /checkout/i })).toBeDisabled()

@@ -30,7 +30,7 @@ let mockState: { data?: Product; isLoading: boolean; isError: boolean } = {
 }
 
 vi.mock("@/entities/cart", () => ({
-  useCart: () => ({ add: vi.fn() }),
+  useCart: () => ({ add: vi.fn(async () => undefined) }),
 }))
 
 vi.mock("@/entities/product", async () => {

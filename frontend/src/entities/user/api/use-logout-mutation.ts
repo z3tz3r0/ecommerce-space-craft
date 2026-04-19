@@ -11,7 +11,7 @@ export function useLogoutMutation() {
         throw new Error(error.detail ?? error.title ?? "Logout failed")
       }
     },
-    onSuccess: () => {
+    onSettled: () => {
       qc.removeQueries({ queryKey: userKeys.me() })
       // Cart queries are invalidated by the cart slice's own wiring.
     },

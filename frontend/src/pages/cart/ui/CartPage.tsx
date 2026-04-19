@@ -1,4 +1,5 @@
 import { Link } from "react-router"
+import { toast } from "sonner"
 import { useCart } from "@/entities/cart"
 import { formatPrice } from "@/shared/lib/format-price"
 import { Button } from "@/shared/ui/button"
@@ -39,8 +40,14 @@ export function CartPage() {
           <CartLine
             key={item.productId}
             item={item}
-            onSet={(id, q) => void cart.set(id, q)}
-            onRemove={(id) => void cart.remove(id)}
+            onSet={(id, q) =>
+              cart
+                .set(id, q)
+                .catch(() => toast.error("Could not update quantity. Please try again."))
+            }
+            onRemove={(id) =>
+              cart.remove(id).catch(() => toast.error("Could not remove item. Please try again."))
+            }
           />
         ))}
       </div>

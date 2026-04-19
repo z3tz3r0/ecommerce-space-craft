@@ -63,5 +63,8 @@ describe("AccountPage", () => {
     render(<AccountPage />, { wrapper })
     expect(screen.getByRole("heading", { name: /account/i })).toBeInTheDocument()
     expect(screen.getByText("a@b.com")).toBeInTheDocument()
+    expect(
+      screen.getByText(new Date("2026-04-18T00:00:00Z").toLocaleDateString()),
+    ).toBeInTheDocument()
   })
 })

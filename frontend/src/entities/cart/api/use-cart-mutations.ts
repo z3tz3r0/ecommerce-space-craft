@@ -47,7 +47,7 @@ export function useAddCartItemMutation() {
                   ? { ...i, quantity: Math.min(i.stockQuantity, i.quantity + quantity) }
                   : i,
               )
-        qc.setQueryData<ServerCart>(cartKeys.server(), { items: nextItems })
+        qc.setQueryData<ServerCart>(cartKeys.server(), { ...prev, items: nextItems })
       }
       return { prev }
     },
@@ -78,7 +78,7 @@ export function useSetCartItemMutation() {
         const nextItems = prevItems.map((i) =>
           i.productId === productId ? { ...i, quantity: Math.min(i.stockQuantity, quantity) } : i,
         )
-        qc.setQueryData<ServerCart>(cartKeys.server(), { items: nextItems })
+        qc.setQueryData<ServerCart>(cartKeys.server(), { ...prev, items: nextItems })
       }
       return { prev }
     },
@@ -106,6 +106,7 @@ export function useRemoveCartItemMutation() {
       if (prev) {
         const prevItems = prev.items ?? []
         qc.setQueryData<ServerCart>(cartKeys.server(), {
+          ...prev,
           items: prevItems.filter((i) => i.productId !== productId),
         })
       }
