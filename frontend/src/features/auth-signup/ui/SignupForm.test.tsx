@@ -7,12 +7,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { SignupForm } from "./SignupForm"
 
 const mutateAsync = vi.hoisted(() => vi.fn())
+const mergeMutateAsync = vi.hoisted(() => vi.fn())
+const guestStoreState = vi.hoisted(() => ({
+  items: [] as Array<{
+    productId: string
+    name: string
+    priceCents: number
+    quantity: number
+    stockQuantity: number
+  }>,
+  clear: vi.fn(),
+}))
+
 vi.mock("@/entities/user", () => ({
   useSignupMutation: () => ({ mutateAsync, isPending: false }),
 }))
 vi.mock("@/entities/cart", () => ({
-  useGuestCartStore: { getState: () => ({ items: [], clear: () => {} }) },
-  useMergeCartMutation: () => ({ mutateAsync: vi.fn() }),
+  useGuestCartStore: { getState: () => guestStoreState },
+  useMergeCartMutation: () => ({ mutateAsync: mergeMutateAsync }),
 }))
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -25,10 +37,16 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 describe("SignupForm", () => {
+  // NOTE: braces matter — `() => mutateAsync.mockReset()` returns the mock
+  // (mockReset returns `this` for chaining), which vitest treats as the
+  // beforeEach return value and its unhandled-rejection detector gets
+  // confused when the same mock later rejects. `() => { ... }` returns
+  // undefined and avoids the false-positive.
   beforeEach(() => {
-    // Use braces — implicit return of the mock object confuses vitest's
-    // unhandled-rejection detector when combined with mockRejectedValue.
     mutateAsync.mockReset()
+    mergeMutateAsync.mockReset()
+    guestStoreState.items = []
+    guestStoreState.clear = vi.fn()
   })
 
   it("rejects weak password client-side", async () => {
@@ -51,7 +69,9 @@ describe("SignupForm", () => {
     await userEvent.type(screen.getByLabelText(/email/i), "a@b.com")
     await userEvent.type(screen.getByLabelText(/password/i), "hunter2!!")
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }))
-    expect(mutateAsync).toHaveBeenCalledWith({ email: "a@b.com", password: "hunter2!!" })
+    await vi.waitFor(() =>
+      expect(mutateAsync).toHaveBeenCalledWith({ email: "a@b.com", password: "hunter2!!" }),
+    )
   })
 
   it("surfaces server conflict error", async () => {
@@ -61,5 +81,30 @@ describe("SignupForm", () => {
     await userEvent.type(screen.getByLabelText(/password/i), "hunter2!!")
     await userEvent.click(screen.getByRole("button", { name: /sign up/i }))
     expect(await screen.findByText(/already registered/i)).toBeInTheDocument()
+  })
+
+  it("navigates home even when guest-cart merge fails", async () => {
+    mutateAsync.mockResolvedValue({
+      id: "u1",
+      email: "a@b.com",
+      createdAt: "2026-04-18T00:00:00Z",
+      updatedAt: "2026-04-18T00:00:00Z",
+    })
+    mergeMutateAsync.mockRejectedValue(new Error("merge failed"))
+    // Seed a guest item so merge actually runs
+    guestStoreState.items = [
+      { productId: "p1", name: "X-Wing", priceCents: 100, quantity: 1, stockQuantity: 5 },
+    ]
+    render(<SignupForm />, { wrapper })
+    await userEvent.type(screen.getByLabelText(/email/i), "a@b.com")
+    await userEvent.type(screen.getByLabelText(/password/i), "hunter2!!")
+    await userEvent.click(screen.getByRole("button", { name: /sign up/i }))
+
+    // Signup mutation called
+    await vi.waitFor(() => expect(mutateAsync).toHaveBeenCalled())
+    // Merge mutation called and rejected
+    await vi.waitFor(() => expect(mergeMutateAsync).toHaveBeenCalled())
+    // No server error displayed (merge failure is silent)
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
   })
 })
