@@ -14,6 +14,7 @@ export function QuantityStepper({ quantity, stockQuantity, onChange }: QuantityS
         variant="outline"
         size="icon-sm"
         aria-label="Decrease quantity"
+        disabled={quantity <= 0}
         onClick={() => onChange(quantity - 1)}
       >
         −

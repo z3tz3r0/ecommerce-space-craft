@@ -29,4 +29,9 @@ describe("QuantityStepper", () => {
     await userEvent.click(screen.getByRole("button", { name: /decrease/i }))
     expect(onChange).toHaveBeenCalledWith(0)
   })
+
+  it("disables - button at quantity 0", () => {
+    render(<QuantityStepper quantity={0} stockQuantity={5} onChange={() => {}} />)
+    expect(screen.getByRole("button", { name: /decrease/i })).toBeDisabled()
+  })
 })
