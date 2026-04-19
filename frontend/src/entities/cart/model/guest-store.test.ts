@@ -3,7 +3,7 @@ import { useGuestCartStore } from "./guest-store"
 
 function resetStore() {
   useGuestCartStore.setState({ items: [] })
-  localStorage.clear()
+  localStorage.removeItem("guest-cart")
 }
 
 describe("useGuestCartStore", () => {
@@ -97,6 +97,17 @@ describe("useGuestCartStore", () => {
       stockQuantity: 3,
     })
     useGuestCartStore.getState().clear()
+    expect(useGuestCartStore.getState().items).toHaveLength(0)
+  })
+
+  it("does not add a new item when quantity is 0", () => {
+    useGuestCartStore.getState().add({
+      productId: "p1",
+      name: "X-Wing",
+      priceCents: 100,
+      stockQuantity: 5,
+      quantity: 0,
+    })
     expect(useGuestCartStore.getState().items).toHaveLength(0)
   })
 })
