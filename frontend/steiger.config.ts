@@ -43,13 +43,15 @@ export default defineConfig([
     rules: { "fsd/insignificant-slice": "off" },
   },
   {
-    // features/auth-* slices are introduced ahead of their consumers
-    // (LoginPage / SignupPage / Account widgets arrive in Task 11).
+    // features/auth-* and features/cart-actions slices are introduced ahead
+    // of their consumers (LoginPage / SignupPage / Account widgets and the
+    // ProductDetailPage AddToCartButton wiring arrive in Task 11).
     // Suppress fsd/insignificant-slice until then.
     files: [
       "src/features/auth-login/**",
       "src/features/auth-signup/**",
       "src/features/auth-logout/**",
+      "src/features/cart-actions/**",
     ],
     rules: { "fsd/insignificant-slice": "off" },
   },
