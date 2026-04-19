@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -46,14 +47,16 @@ func (s *Service) Signup(ctx context.Context, email, password string) (User, err
 
 // Login verifies the email/password combination. It returns
 // ErrInvalidCredentials for both unknown emails and wrong passwords to
-// prevent user enumeration.
+// prevent user enumeration. Repository failures unrelated to lookup
+// (e.g. DB outage) propagate so the operator sees a real 500 instead of
+// a misleading "invalid credentials".
 func (s *Service) Login(ctx context.Context, email, password string) (User, error) {
 	rec, err := s.repo.GetUserByEmail(ctx, strings.ToLower(strings.TrimSpace(email)))
 	if err != nil {
-		// Collapse ErrUserNotFound and any other lookup failure into
-		// ErrInvalidCredentials — the client must not be able to tell
-		// whether the email was known.
-		return User{}, ErrInvalidCredentials
+		if errors.Is(err, ErrUserNotFound) {
+			return User{}, ErrInvalidCredentials
+		}
+		return User{}, fmt.Errorf("auth: login lookup: %w", err)
 	}
 	ok, err := verifyPassword(password, rec.PasswordHash)
 	if err != nil {

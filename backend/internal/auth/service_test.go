@@ -69,6 +69,19 @@ func TestService_Login_UnknownEmail_Returns_ErrInvalidCredentials(t *testing.T) 
 	require.ErrorIs(t, err, auth.ErrInvalidCredentials)
 }
 
+func TestService_Login_RepoOtherError_PropagatesWrapped(t *testing.T) {
+	boom := errors.New("db exploded")
+	svc := auth.NewServiceFake(t, auth.FakeRepoAdapter{
+		GetByEmail: func(_ context.Context, _ string) (auth.FakeRecord, error) {
+			return auth.FakeRecord{}, boom
+		},
+	})
+	_, err := svc.Login(context.Background(), "a@b.com", "hunter2!!")
+	require.Error(t, err)
+	require.NotErrorIs(t, err, auth.ErrInvalidCredentials, "DB outage must not look like bad credentials")
+	require.ErrorIs(t, err, boom, "underlying error must remain unwrappable")
+}
+
 func TestService_Login_WrongPassword_Returns_ErrInvalidCredentials(t *testing.T) {
 	uid := uuid.New()
 	now := time.Now()
