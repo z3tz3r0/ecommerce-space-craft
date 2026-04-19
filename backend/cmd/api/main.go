@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/auth"
+	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/cart"
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/catalog"
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/platform/config"
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/platform/db"
@@ -48,6 +49,10 @@ func main() {
 	authRepo := auth.NewPostgres(pool)
 	authSvc := auth.NewService(authRepo)
 	auth.Register(api.Huma, authSvc, sess, logger)
+
+	cartRepo := cart.NewPostgres(pool)
+	cartSvc := cart.NewService(cartRepo)
+	cart.Register(api.Huma, cartSvc, authSvc, sess, logger)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
