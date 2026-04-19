@@ -63,6 +63,12 @@ jobs:
             backend/internal/catalog/db/db.go \
             backend/internal/catalog/db/models.go \
             backend/internal/catalog/db/queries.sql.go \
+            backend/internal/auth/db/db.go \
+            backend/internal/auth/db/models.go \
+            backend/internal/auth/db/queries.sql.go \
+            backend/internal/cart/db/db.go \
+            backend/internal/cart/db/models.go \
+            backend/internal/cart/db/queries.sql.go \
             backend/openapi.json
 
   build:
