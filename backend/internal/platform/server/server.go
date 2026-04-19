@@ -51,10 +51,10 @@ func New(title, version string, logger *slog.Logger) *API {
 	// spec tells clients how to authenticate. Operations behind RequireAuth
 	// reference this scheme via huma.Operation.Security; openapi-typescript
 	// surfaces it in the generated FE client.
-	if cfg.OpenAPI.Components == nil {
-		cfg.OpenAPI.Components = &huma.Components{}
+	if cfg.Components == nil {
+		cfg.Components = &huma.Components{}
 	}
-	cfg.OpenAPI.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
+	cfg.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
 		SessionSecurityScheme: {
 			Type:        "apiKey",
 			In:          "cookie",
