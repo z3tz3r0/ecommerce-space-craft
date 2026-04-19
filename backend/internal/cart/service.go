@@ -2,13 +2,16 @@ package cart
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 )
 
 // Service holds business logic for the cart bounded context.
+//
+// Stock-clamping and stock-overflow detection live in the Repository so the
+// read-then-write sequence stays atomic. Service is responsible only for
+// input validation and forwarding.
 type Service struct {
 	repo Repository
 }
@@ -30,62 +33,22 @@ func (s *Service) Get(ctx context.Context, userID uuid.UUID) (Cart, error) {
 	return Cart{Items: items}, nil
 }
 
-// Add increments the cart line for productID by the given quantity,
-// clamping to the product's live stock. Creates the line if it doesn't
-// exist. Returns the resulting line.
+// Add increments the cart line for productID by the given quantity. The
+// repository performs the read, sum, and clamp atomically.
 func (s *Service) Add(ctx context.Context, userID, productID uuid.UUID, quantity int32) (Item, error) {
 	if quantity < 1 {
 		return Item{}, ErrInvalidQuantity
 	}
-	prod, err := s.repo.GetProduct(ctx, productID)
-	if err != nil {
-		return Item{}, fmt.Errorf("cart: get product: %w", err)
-	}
-	existing, err := s.repo.GetItemQuantity(ctx, userID, productID)
-	if err != nil {
-		return Item{}, fmt.Errorf("cart: get existing quantity: %w", err)
-	}
-	target := existing + quantity
-	if target > prod.StockQuantity {
-		target = prod.StockQuantity
-	}
-	if err := s.repo.UpsertItem(ctx, userID, productID, target); err != nil {
-		return Item{}, fmt.Errorf("cart: upsert: %w", err)
-	}
-	return Item{
-		ProductID:     prod.ID,
-		Name:          prod.Name,
-		PriceCents:    prod.PriceCents,
-		ImageURL:      prod.ImageURL,
-		Quantity:      target,
-		StockQuantity: prod.StockQuantity,
-	}, nil
+	return s.repo.AddItem(ctx, userID, productID, quantity)
 }
 
-// Set replaces the cart line's quantity. Rejects quantities <1 or above
-// live stock.
+// Set replaces the cart line's quantity. The repository validates against
+// current stock atomically.
 func (s *Service) Set(ctx context.Context, userID, productID uuid.UUID, quantity int32) (Item, error) {
 	if quantity < 1 {
 		return Item{}, ErrInvalidQuantity
 	}
-	prod, err := s.repo.GetProduct(ctx, productID)
-	if err != nil {
-		return Item{}, fmt.Errorf("cart: get product: %w", err)
-	}
-	if quantity > prod.StockQuantity {
-		return Item{}, ErrOverStock
-	}
-	if err := s.repo.UpsertItem(ctx, userID, productID, quantity); err != nil {
-		return Item{}, fmt.Errorf("cart: upsert: %w", err)
-	}
-	return Item{
-		ProductID:     prod.ID,
-		Name:          prod.Name,
-		PriceCents:    prod.PriceCents,
-		ImageURL:      prod.ImageURL,
-		Quantity:      quantity,
-		StockQuantity: prod.StockQuantity,
-	}, nil
+	return s.repo.SetItem(ctx, userID, productID, quantity)
 }
 
 // Remove deletes the cart line.
@@ -96,34 +59,11 @@ func (s *Service) Remove(ctx context.Context, userID, productID uuid.UUID) error
 	return nil
 }
 
-// Merge adds the given guest items to the user's cart additively — for
-// each input (productID, quantity), sum with the existing server quantity
-// and clamp to live stock. Products that don't exist or are inactive are
-// silently skipped. Returns the resulting full cart.
+// Merge folds the given guest items into the user's cart atomically.
 func (s *Service) Merge(ctx context.Context, userID uuid.UUID, items []MergeItem) (Cart, error) {
-	for _, in := range items {
-		if in.Quantity < 1 {
-			continue
-		}
-		prod, err := s.repo.GetProduct(ctx, in.ProductID)
-		if err != nil {
-			if errors.Is(err, ErrProductNotFound) {
-				continue
-			}
-			return Cart{}, fmt.Errorf("cart: merge get product: %w", err)
-		}
-		existing, err := s.repo.GetItemQuantity(ctx, userID, in.ProductID)
-		if err != nil {
-			return Cart{}, fmt.Errorf("cart: merge get existing: %w", err)
-		}
-		target := existing + in.Quantity
-		if target > prod.StockQuantity {
-			target = prod.StockQuantity
-		}
-		if err := s.repo.UpsertItem(ctx, userID, in.ProductID, target); err != nil {
-			return Cart{}, fmt.Errorf("cart: merge upsert: %w", err)
-		}
+	cart, err := s.repo.MergeItems(ctx, userID, items)
+	if err != nil {
+		return Cart{}, fmt.Errorf("cart: merge: %w", err)
 	}
-	return s.Get(ctx, userID)
+	return cart, nil
 }
-

@@ -14,14 +14,15 @@ import (
 
 // Postgres is the pgx/sqlc-backed implementation of Repository.
 type Postgres struct {
-	q *cartdb.Queries
+	pool *pgxpool.Pool
+	q    *cartdb.Queries
 }
 
 var _ Repository = (*Postgres)(nil)
 
 // NewPostgres wraps a pgxpool.Pool with the sqlc-generated Queries.
 func NewPostgres(pool *pgxpool.Pool) *Postgres {
-	return &Postgres{q: cartdb.New(pool)}
+	return &Postgres{pool: pool, q: cartdb.New(pool)}
 }
 
 // GetItems returns the user's cart lines joined against active products.
@@ -44,54 +45,88 @@ func (p *Postgres) GetItems(ctx context.Context, userID uuid.UUID) ([]Item, erro
 	return out, nil
 }
 
-// GetProduct returns the live product snapshot or ErrProductNotFound.
-func (p *Postgres) GetProduct(ctx context.Context, productID uuid.UUID) (ProductSnapshot, error) {
-	row, err := p.q.GetProductForCart(ctx, productID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ProductSnapshot{}, ErrProductNotFound
+// AddItem implements the atomic add-and-clamp described on Repository.
+func (p *Postgres) AddItem(ctx context.Context, userID, productID uuid.UUID, delta int32) (Item, error) {
+	var result Item
+	err := pgx.BeginFunc(ctx, p.pool, func(tx pgx.Tx) error {
+		q := p.q.WithTx(tx)
+		prod, err := q.LockProductForCart(ctx, productID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrProductNotFound
+			}
+			return fmt.Errorf("postgres: lock product: %w", err)
 		}
-		return ProductSnapshot{}, fmt.Errorf("postgres: get product for cart: %w", err)
-	}
-	if !row.IsActive {
-		return ProductSnapshot{}, ErrProductNotFound
-	}
-	return ProductSnapshot{
-		ID:            row.ID,
-		Name:          row.Name,
-		PriceCents:    row.PriceCents,
-		ImageURL:      row.ImageUrl,
-		StockQuantity: row.StockQuantity,
-		IsActive:      row.IsActive,
-	}, nil
+		if !prod.IsActive {
+			return ErrProductNotFound
+		}
+		existing, err := q.GetCartItemQuantity(ctx, cartdb.GetCartItemQuantityParams{
+			UserID:    userID,
+			ProductID: productID,
+		})
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("postgres: get existing quantity: %w", err)
+		}
+		target := existing + delta
+		if target > prod.StockQuantity {
+			target = prod.StockQuantity
+		}
+		if _, err := q.UpsertCartItem(ctx, cartdb.UpsertCartItemParams{
+			UserID:    userID,
+			ProductID: productID,
+			Quantity:  target,
+		}); err != nil {
+			return fmt.Errorf("postgres: upsert cart item: %w", err)
+		}
+		result = Item{
+			ProductID:     productID,
+			Name:          prod.Name,
+			PriceCents:    prod.PriceCents,
+			ImageURL:      prod.ImageUrl,
+			Quantity:      target,
+			StockQuantity: prod.StockQuantity,
+		}
+		return nil
+	})
+	return result, err
 }
 
-// GetItemQuantity returns the current quantity of a cart line, or 0 if none.
-func (p *Postgres) GetItemQuantity(ctx context.Context, userID, productID uuid.UUID) (int32, error) {
-	q, err := p.q.GetCartItemQuantity(ctx, cartdb.GetCartItemQuantityParams{
-		UserID:    userID,
-		ProductID: productID,
-	})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, nil
+// SetItem implements the atomic set-with-stock-check described on Repository.
+func (p *Postgres) SetItem(ctx context.Context, userID, productID uuid.UUID, quantity int32) (Item, error) {
+	var result Item
+	err := pgx.BeginFunc(ctx, p.pool, func(tx pgx.Tx) error {
+		q := p.q.WithTx(tx)
+		prod, err := q.LockProductForCart(ctx, productID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrProductNotFound
+			}
+			return fmt.Errorf("postgres: lock product: %w", err)
 		}
-		return 0, fmt.Errorf("postgres: get cart item quantity: %w", err)
-	}
-	return q, nil
-}
-
-// UpsertItem inserts or updates the cart line to the given quantity.
-func (p *Postgres) UpsertItem(ctx context.Context, userID, productID uuid.UUID, quantity int32) error {
-	_, err := p.q.UpsertCartItem(ctx, cartdb.UpsertCartItemParams{
-		UserID:    userID,
-		ProductID: productID,
-		Quantity:  quantity,
+		if !prod.IsActive {
+			return ErrProductNotFound
+		}
+		if quantity > prod.StockQuantity {
+			return ErrOverStock
+		}
+		if _, err := q.UpsertCartItem(ctx, cartdb.UpsertCartItemParams{
+			UserID:    userID,
+			ProductID: productID,
+			Quantity:  quantity,
+		}); err != nil {
+			return fmt.Errorf("postgres: upsert cart item: %w", err)
+		}
+		result = Item{
+			ProductID:     productID,
+			Name:          prod.Name,
+			PriceCents:    prod.PriceCents,
+			ImageURL:      prod.ImageUrl,
+			Quantity:      quantity,
+			StockQuantity: prod.StockQuantity,
+		}
+		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("postgres: upsert cart item: %w", err)
-	}
-	return nil
+	return result, err
 }
 
 // DeleteItem removes a cart line.
@@ -104,3 +139,63 @@ func (p *Postgres) DeleteItem(ctx context.Context, userID, productID uuid.UUID) 
 	}
 	return nil
 }
+
+// MergeItems applies a batch of guest items inside one transaction.
+// Per-item N+1 round-trips remain (validate + read existing + upsert) — the
+// win here is atomicity (all-or-nothing) and that each product row is
+// FOR-UPDATE locked so concurrent merges/adds can't race the clamp.
+// Reading the resulting cart happens after commit so it sees the post-merge
+// state across all items.
+func (p *Postgres) MergeItems(ctx context.Context, userID uuid.UUID, items []MergeItem) (Cart, error) {
+	err := pgx.BeginFunc(ctx, p.pool, func(tx pgx.Tx) error {
+		q := p.q.WithTx(tx)
+		for _, in := range items {
+			if in.Quantity < 1 {
+				continue
+			}
+			prod, err := q.LockProductForCart(ctx, in.ProductID)
+			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					continue
+				}
+				return fmt.Errorf("postgres: merge lock product: %w", err)
+			}
+			if !prod.IsActive {
+				continue
+			}
+			existing, err := q.GetCartItemQuantity(ctx, cartdb.GetCartItemQuantityParams{
+				UserID:    userID,
+				ProductID: in.ProductID,
+			})
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return fmt.Errorf("postgres: merge get existing: %w", err)
+			}
+			target := existing + in.Quantity
+			if target > prod.StockQuantity {
+				target = prod.StockQuantity
+			}
+			if _, err := q.UpsertCartItem(ctx, cartdb.UpsertCartItemParams{
+				UserID:    userID,
+				ProductID: in.ProductID,
+				Quantity:  target,
+			}); err != nil {
+				return fmt.Errorf("postgres: merge upsert: %w", err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return Cart{}, err
+	}
+	out, err := p.GetItems(ctx, userID)
+	if err != nil {
+		return Cart{}, fmt.Errorf("postgres: merge get final cart: %w", err)
+	}
+	if out == nil {
+		out = []Item{}
+	}
+	return Cart{Items: out}, nil
+}
+
+// CreateInput / Create / DeleteAll are intentionally NOT here — the cart
+// repository never inserts products. Catalog owns that.

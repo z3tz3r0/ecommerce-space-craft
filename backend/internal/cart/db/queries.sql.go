@@ -133,6 +133,39 @@ func (q *Queries) GetProductForCart(ctx context.Context, id uuid.UUID) (GetProdu
 	return i, err
 }
 
+const lockProductForCart = `-- name: LockProductForCart :one
+SELECT id, name, price_cents, image_url, stock_quantity, is_active
+FROM products
+WHERE id = $1
+FOR UPDATE
+`
+
+type LockProductForCartRow struct {
+	ID            uuid.UUID
+	Name          string
+	PriceCents    int64
+	ImageUrl      *string
+	StockQuantity int32
+	IsActive      bool
+}
+
+// LockProductForCart selects the product row with FOR UPDATE so concurrent
+// cart writers serialize on the product. Used inside cart Add/Set/Merge
+// transactions to make the read-then-clamp-then-write sequence race-free.
+func (q *Queries) LockProductForCart(ctx context.Context, id uuid.UUID) (LockProductForCartRow, error) {
+	row := q.db.QueryRow(ctx, lockProductForCart, id)
+	var i LockProductForCartRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.PriceCents,
+		&i.ImageUrl,
+		&i.StockQuantity,
+		&i.IsActive,
+	)
+	return i, err
+}
+
 const upsertCartItem = `-- name: UpsertCartItem :one
 INSERT INTO cart_items (user_id, product_id, quantity)
 VALUES ($1, $2, $3)

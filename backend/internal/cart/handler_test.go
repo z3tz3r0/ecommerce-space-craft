@@ -114,14 +114,14 @@ func TestHandler_AddItem_WithSession_ReturnsItem(t *testing.T) {
 		},
 	})
 	cartSvc := cart.NewServiceFake(t, cart.FakeRepoAdapter{
-		GetProduct: func(_ context.Context, _ uuid.UUID) (cart.FakeProduct, error) {
-			return cart.FakeProduct{ID: pid, Name: "X-Wing", PriceCents: 12500000, StockQuantity: 10, IsActive: true}, nil
-		},
-		GetItemQuantity: func(_ context.Context, _, _ uuid.UUID) (int32, error) {
-			return 0, nil
-		},
-		UpsertItem: func(_ context.Context, _, _ uuid.UUID, _ int32) error {
-			return nil
+		AddItem: func(_ context.Context, _, _ uuid.UUID, _ int32) (cart.Item, error) {
+			return cart.Item{
+				ProductID:     pid,
+				Name:          "X-Wing",
+				PriceCents:    12500000,
+				Quantity:      2,
+				StockQuantity: 10,
+			}, nil
 		},
 	})
 	srv := buildTestServer(t, authSvc, cartSvc)

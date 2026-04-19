@@ -12,30 +12,19 @@ import (
 // suffix keeps it out of regular builds, so the fake implementation does
 // NOT ship in cmd/api or any production binary.
 
-// FakeProduct mirrors ProductSnapshot for test construction. Field names
-// match ProductSnapshot exactly so we can convert with a direct type cast.
-type FakeProduct struct {
-	ID            uuid.UUID
-	Name          string
-	PriceCents    int64
-	ImageURL      *string
-	StockQuantity int32
-	IsActive      bool
-}
-
 // FakeRepoAdapter lets tests supply behavior for each Repository method.
-// Any unset callback falls back to a sensible default.
+// Any unset callback falls back to a sensible zero-value default.
 type FakeRepoAdapter struct {
-	GetItems        func(ctx context.Context, userID uuid.UUID) ([]Item, error)
-	GetProduct      func(ctx context.Context, productID uuid.UUID) (FakeProduct, error)
-	GetItemQuantity func(ctx context.Context, userID, productID uuid.UUID) (int32, error)
-	UpsertItem      func(ctx context.Context, userID, productID uuid.UUID, quantity int32) error
-	DeleteItem      func(ctx context.Context, userID, productID uuid.UUID) error
+	GetItems   func(ctx context.Context, userID uuid.UUID) ([]Item, error)
+	AddItem    func(ctx context.Context, userID, productID uuid.UUID, delta int32) (Item, error)
+	SetItem    func(ctx context.Context, userID, productID uuid.UUID, quantity int32) (Item, error)
+	DeleteItem func(ctx context.Context, userID, productID uuid.UUID) error
+	MergeItems func(ctx context.Context, userID uuid.UUID, items []MergeItem) (Cart, error)
 }
 
-// NewServiceFake builds a Service backed by an in-memory fake repository.
-// The *testing.T parameter is discarded but required so the signature
-// makes it visually clear at the call site that this is test-only wiring.
+// NewServiceFake builds a Service backed by an in-memory fake Repository.
+// The *testing.T parameter is discarded but required so the signature makes
+// it visually clear at the call site that this is test-only wiring.
 func NewServiceFake(_ *testing.T, a FakeRepoAdapter) *Service {
 	return NewService(fakeRepoImpl{a: a})
 }
@@ -49,29 +38,18 @@ func (f fakeRepoImpl) GetItems(ctx context.Context, userID uuid.UUID) ([]Item, e
 	return f.a.GetItems(ctx, userID)
 }
 
-func (f fakeRepoImpl) GetProduct(ctx context.Context, productID uuid.UUID) (ProductSnapshot, error) {
-	if f.a.GetProduct == nil {
-		return ProductSnapshot{}, ErrProductNotFound
+func (f fakeRepoImpl) AddItem(ctx context.Context, userID, productID uuid.UUID, delta int32) (Item, error) {
+	if f.a.AddItem == nil {
+		return Item{}, ErrProductNotFound
 	}
-	p, err := f.a.GetProduct(ctx, productID)
-	if err != nil {
-		return ProductSnapshot{}, err
-	}
-	return ProductSnapshot(p), nil
+	return f.a.AddItem(ctx, userID, productID, delta)
 }
 
-func (f fakeRepoImpl) GetItemQuantity(ctx context.Context, userID, productID uuid.UUID) (int32, error) {
-	if f.a.GetItemQuantity == nil {
-		return 0, nil
+func (f fakeRepoImpl) SetItem(ctx context.Context, userID, productID uuid.UUID, quantity int32) (Item, error) {
+	if f.a.SetItem == nil {
+		return Item{}, ErrProductNotFound
 	}
-	return f.a.GetItemQuantity(ctx, userID, productID)
-}
-
-func (f fakeRepoImpl) UpsertItem(ctx context.Context, userID, productID uuid.UUID, quantity int32) error {
-	if f.a.UpsertItem == nil {
-		return nil
-	}
-	return f.a.UpsertItem(ctx, userID, productID, quantity)
+	return f.a.SetItem(ctx, userID, productID, quantity)
 }
 
 func (f fakeRepoImpl) DeleteItem(ctx context.Context, userID, productID uuid.UUID) error {
@@ -79,4 +57,11 @@ func (f fakeRepoImpl) DeleteItem(ctx context.Context, userID, productID uuid.UUI
 		return nil
 	}
 	return f.a.DeleteItem(ctx, userID, productID)
+}
+
+func (f fakeRepoImpl) MergeItems(ctx context.Context, userID uuid.UUID, items []MergeItem) (Cart, error) {
+	if f.a.MergeItems == nil {
+		return Cart{}, nil
+	}
+	return f.a.MergeItems(ctx, userID, items)
 }

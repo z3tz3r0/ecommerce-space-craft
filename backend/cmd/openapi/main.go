@@ -74,11 +74,13 @@ func (nopAuthRepo) GetUserByID(_ context.Context, _ uuid.UUID) (auth.UserRecord,
 type nopCartRepo struct{}
 
 func (nopCartRepo) GetItems(_ context.Context, _ uuid.UUID) ([]cart.Item, error) { return nil, nil }
-func (nopCartRepo) GetProduct(_ context.Context, _ uuid.UUID) (cart.ProductSnapshot, error) {
-	return cart.ProductSnapshot{}, nil
+func (nopCartRepo) AddItem(_ context.Context, _, _ uuid.UUID, _ int32) (cart.Item, error) {
+	return cart.Item{}, nil
 }
-func (nopCartRepo) GetItemQuantity(_ context.Context, _, _ uuid.UUID) (int32, error) {
-	return 0, nil
+func (nopCartRepo) SetItem(_ context.Context, _, _ uuid.UUID, _ int32) (cart.Item, error) {
+	return cart.Item{}, nil
 }
-func (nopCartRepo) UpsertItem(_ context.Context, _, _ uuid.UUID, _ int32) error { return nil }
-func (nopCartRepo) DeleteItem(_ context.Context, _, _ uuid.UUID) error          { return nil }
+func (nopCartRepo) DeleteItem(_ context.Context, _, _ uuid.UUID) error { return nil }
+func (nopCartRepo) MergeItems(_ context.Context, _ uuid.UUID, _ []cart.MergeItem) (cart.Cart, error) {
+	return cart.Cart{}, nil
+}
