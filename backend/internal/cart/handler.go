@@ -25,7 +25,7 @@ func Register(api huma.API, svc *Service, authSvc *auth.Service, sess session.Ma
 		Tags:        []string{"Cart"},
 		Middlewares: huma.Middlewares{requireAuth},
 	}, func(ctx context.Context, _ *struct{}) (*CartOutput, error) {
-		u := auth.CurrentUser(ctx)
+		u := auth.MustCurrentUser(ctx)
 		c, err := svc.Get(ctx, u.ID)
 		if err != nil {
 			return nil, mapError(logger, err)
@@ -41,7 +41,7 @@ func Register(api huma.API, svc *Service, authSvc *auth.Service, sess session.Ma
 		Tags:        []string{"Cart"},
 		Middlewares: huma.Middlewares{requireAuth},
 	}, func(ctx context.Context, in *AddCartItemInput) (*CartItemOutput, error) {
-		u := auth.CurrentUser(ctx)
+		u := auth.MustCurrentUser(ctx)
 		pid, err := uuid.Parse(in.Body.ProductID)
 		if err != nil {
 			return nil, huma.Error400BadRequest("invalid productId")
@@ -61,7 +61,7 @@ func Register(api huma.API, svc *Service, authSvc *auth.Service, sess session.Ma
 		Tags:        []string{"Cart"},
 		Middlewares: huma.Middlewares{requireAuth},
 	}, func(ctx context.Context, in *SetCartItemInput) (*CartItemOutput, error) {
-		u := auth.CurrentUser(ctx)
+		u := auth.MustCurrentUser(ctx)
 		pid, err := uuid.Parse(in.ProductID)
 		if err != nil {
 			return nil, huma.Error400BadRequest("invalid productId")
@@ -82,7 +82,7 @@ func Register(api huma.API, svc *Service, authSvc *auth.Service, sess session.Ma
 		DefaultStatus: http.StatusNoContent,
 		Middlewares:   huma.Middlewares{requireAuth},
 	}, func(ctx context.Context, in *RemoveCartItemInput) (*struct{}, error) {
-		u := auth.CurrentUser(ctx)
+		u := auth.MustCurrentUser(ctx)
 		pid, err := uuid.Parse(in.ProductID)
 		if err != nil {
 			return nil, huma.Error400BadRequest("invalid productId")
@@ -101,7 +101,7 @@ func Register(api huma.API, svc *Service, authSvc *auth.Service, sess session.Ma
 		Tags:        []string{"Cart"},
 		Middlewares: huma.Middlewares{requireAuth},
 	}, func(ctx context.Context, in *MergeCartInput) (*CartOutput, error) {
-		u := auth.CurrentUser(ctx)
+		u := auth.MustCurrentUser(ctx)
 		items := make([]MergeItem, 0, len(in.Body.Items))
 		for _, it := range in.Body.Items {
 			pid, err := uuid.Parse(it.ProductID)

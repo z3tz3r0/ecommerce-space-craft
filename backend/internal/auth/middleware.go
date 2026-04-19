@@ -18,13 +18,15 @@ const userIDKey = "userID"
 // contextKey is the per-request context.Value key for the authenticated User.
 type contextKey struct{}
 
-// CurrentUser retrieves the User that RequireAuth attached to the request
-// context. Panics if the middleware did not run — callers must only use
-// this inside routes registered behind RequireAuth.
-func CurrentUser(ctx context.Context) User {
+// MustCurrentUser retrieves the User that RequireAuth attached to the
+// request context. The "Must" prefix follows Go convention (regexp.MustCompile,
+// template.Must) for assertion helpers that panic on programmer error: this
+// must only be called inside handlers registered behind RequireAuth, so a
+// missing context value is a wiring bug, not a runtime condition.
+func MustCurrentUser(ctx context.Context) User {
 	u, ok := ctx.Value(contextKey{}).(User)
 	if !ok {
-		panic("auth: CurrentUser called outside RequireAuth-protected handler")
+		panic("auth: MustCurrentUser called outside RequireAuth-protected handler")
 	}
 	return u
 }
