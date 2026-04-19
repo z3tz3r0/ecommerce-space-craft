@@ -63,6 +63,8 @@ export default defineConfig([
       "src/widgets/product-grid/**",
       "src/widgets/filter-sidebar/**",
       "src/widgets/featured-section/**",
+      "src/widgets/site-header/**",
+      "src/widgets/cart-line/**",
     ],
     rules: { "fsd/no-segmentless-slices": "off" },
   },
