@@ -10,11 +10,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/auth"
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/catalog"
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/platform/config"
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/platform/db"
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/platform/logging"
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/platform/server"
+	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/platform/session"
 )
 
 func main() {
@@ -37,13 +39,19 @@ func main() {
 
 	api := server.New("Spacecraft Store API", "0.1.0", logger, cfg.CORSOrigins)
 
+	sess := session.New(pool, cfg.Environment == "production")
+
 	catalogRepo := catalog.NewPostgres(pool)
 	catalogSvc := catalog.NewService(catalogRepo)
 	catalog.Register(api.Huma, catalogSvc, logger)
 
+	authRepo := auth.NewPostgres(pool)
+	authSvc := auth.NewService(authRepo)
+	auth.Register(api.Huma, authSvc, sess, logger)
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           api.Mux,
+		Handler:           sess.LoadAndSave(api.Mux),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
