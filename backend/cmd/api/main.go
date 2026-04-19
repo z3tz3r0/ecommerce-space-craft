@@ -4,8 +4,9 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"fmt"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -20,10 +21,17 @@ import (
 	"github.com/z3tz3r0/ecommerce-space-craft/backend/internal/platform/session"
 )
 
+// main delegates to run so deferred cleanup (pool.Close, stopSessionCleanup,
+// srv.Shutdown) runs before os.Exit. Bare main + log.Fatal would skip those.
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("config: %v", err)
+		fmt.Fprintf(os.Stderr, "config: %v\n", err)
+		return 1
 	}
 
 	logger := logging.New(cfg.Environment, cfg.LogLevel)
@@ -34,7 +42,7 @@ func main() {
 	pool, err := db.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		logger.Error("db init failed", "err", err.Error())
-		log.Fatalf("db: %v", err)
+		return 1
 	}
 	defer pool.Close()
 
@@ -71,6 +79,7 @@ func main() {
 		}
 	}()
 
+	exitCode := 0
 	select {
 	case <-ctx.Done():
 		logger.Info("shutdown signal received")
@@ -79,11 +88,17 @@ func main() {
 		// this branch main would block on <-ctx.Done() forever waiting for
 		// a SIGINT that wouldn't come.
 		logger.Error("server died unexpectedly", "err", err.Error())
+		exitCode = 1
 	}
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.Error("shutdown", "err", err.Error())
+		if exitCode == 0 {
+			exitCode = 1
+		}
 	}
+
+	return exitCode
 }

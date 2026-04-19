@@ -1,9 +1,11 @@
 package cart
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -67,10 +69,7 @@ func (p *Postgres) AddItem(ctx context.Context, userID, productID uuid.UUID, del
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("postgres: get existing quantity: %w", err)
 		}
-		target := existing + delta
-		if target > prod.StockQuantity {
-			target = prod.StockQuantity
-		}
+		target := clampSum(existing, delta, prod.StockQuantity)
 		if _, err := q.UpsertCartItem(ctx, cartdb.UpsertCartItemParams{
 			UserID:    userID,
 			ProductID: productID,
@@ -141,15 +140,25 @@ func (p *Postgres) DeleteItem(ctx context.Context, userID, productID uuid.UUID) 
 }
 
 // MergeItems applies a batch of guest items inside one transaction.
-// Per-item N+1 round-trips remain (validate + read existing + upsert) — the
-// win here is atomicity (all-or-nothing) and that each product row is
-// FOR-UPDATE locked so concurrent merges/adds can't race the clamp.
-// Reading the resulting cart happens after commit so it sees the post-merge
-// state across all items.
+//
+// Lock acquisition order is sorted by ProductID to keep it deterministic:
+// two concurrent merges with overlapping products in different input orders
+// would otherwise risk a circular FOR UPDATE wait (deadlock).
+//
+// The final cart read happens INSIDE the transaction so a post-write read
+// failure rolls back the whole merge — otherwise a caller retry could
+// double-count guest items into the server cart.
 func (p *Postgres) MergeItems(ctx context.Context, userID uuid.UUID, items []MergeItem) (Cart, error) {
+	sortedItems := make([]MergeItem, len(items))
+	copy(sortedItems, items)
+	slices.SortFunc(sortedItems, func(a, b MergeItem) int {
+		return bytes.Compare(a.ProductID[:], b.ProductID[:])
+	})
+
+	var result Cart
 	err := pgx.BeginFunc(ctx, p.pool, func(tx pgx.Tx) error {
 		q := p.q.WithTx(tx)
-		for _, in := range items {
+		for _, in := range sortedItems {
 			if in.Quantity < 1 {
 				continue
 			}
@@ -170,10 +179,7 @@ func (p *Postgres) MergeItems(ctx context.Context, userID uuid.UUID, items []Mer
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				return fmt.Errorf("postgres: merge get existing: %w", err)
 			}
-			target := existing + in.Quantity
-			if target > prod.StockQuantity {
-				target = prod.StockQuantity
-			}
+			target := clampSum(existing, in.Quantity, prod.StockQuantity)
 			if _, err := q.UpsertCartItem(ctx, cartdb.UpsertCartItemParams{
 				UserID:    userID,
 				ProductID: in.ProductID,
@@ -182,20 +188,41 @@ func (p *Postgres) MergeItems(ctx context.Context, userID uuid.UUID, items []Mer
 				return fmt.Errorf("postgres: merge upsert: %w", err)
 			}
 		}
+		rows, err := q.GetCartItems(ctx, userID)
+		if err != nil {
+			return fmt.Errorf("postgres: merge get final cart: %w", err)
+		}
+		out := make([]Item, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, Item{
+				ProductID:     r.ProductID,
+				Name:          r.Name,
+				PriceCents:    r.PriceCents,
+				ImageURL:      r.ImageUrl,
+				Quantity:      r.Quantity,
+				StockQuantity: r.StockQuantity,
+			})
+		}
+		result = Cart{Items: out}
 		return nil
 	})
 	if err != nil {
 		return Cart{}, err
 	}
-	out, err := p.GetItems(ctx, userID)
-	if err != nil {
-		return Cart{}, fmt.Errorf("postgres: merge get final cart: %w", err)
+	if result.Items == nil {
+		result.Items = []Item{}
 	}
-	if out == nil {
-		out = []Item{}
-	}
-	return Cart{Items: out}, nil
+	return result, nil
 }
 
-// CreateInput / Create / DeleteAll are intentionally NOT here — the cart
-// repository never inserts products. Catalog owns that.
+// clampSum returns min(existing+delta, stock) computed in int64 so the sum
+// can't silently wrap an int32 (e.g. a malicious client passing math.MaxInt32
+// when existing is already large would otherwise overflow to a negative
+// number and bypass the stock check).
+func clampSum(existing, delta, stock int32) int32 {
+	sum := int64(existing) + int64(delta)
+	if sum > int64(stock) {
+		return stock
+	}
+	return int32(sum)
+}

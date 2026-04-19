@@ -114,7 +114,10 @@ func TestHandler_AddItem_WithSession_ReturnsItem(t *testing.T) {
 		},
 	})
 	cartSvc := cart.NewServiceFake(t, cart.FakeRepoAdapter{
-		AddItem: func(_ context.Context, _, _ uuid.UUID, _ int32) (cart.Item, error) {
+		AddItem: func(_ context.Context, gotUserID, gotProductID uuid.UUID, gotDelta int32) (cart.Item, error) {
+			require.Equal(t, uid, gotUserID, "handler must forward authenticated user's id")
+			require.Equal(t, pid, gotProductID, "handler must forward path productId")
+			require.Equal(t, int32(2), gotDelta, "handler must forward body quantity")
 			return cart.Item{
 				ProductID:     pid,
 				Name:          "X-Wing",

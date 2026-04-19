@@ -81,6 +81,8 @@ func TestService_Login_RepoOtherError_PropagatesWrapped(t *testing.T) {
 	require.Error(t, err)
 	require.NotErrorIs(t, err, auth.ErrInvalidCredentials, "DB outage must not look like bad credentials")
 	require.ErrorIs(t, err, boom, "underlying error must remain unwrappable")
+	require.ErrorContains(t, err, "auth: login lookup",
+		"err must be wrapped with the service-layer prefix so it doesn't reach handlers as a bare repo error")
 }
 
 func TestService_Login_WrongPassword_Returns_ErrInvalidCredentials(t *testing.T) {
