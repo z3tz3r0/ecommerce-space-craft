@@ -35,24 +35,29 @@ interface AddInput {
 export function useCart(): UseCartResult {
   const auth = useAuth()
   const authed = auth.isSuccess
-  const guest = useGuestCartStore()
+  const guestItems = useGuestCartStore((s) => s.items)
+  const guestAdd = useGuestCartStore((s) => s.add)
+  const guestSet = useGuestCartStore((s) => s.set)
+  const guestRemove = useGuestCartStore((s) => s.remove)
   const serverQuery = useServerCart({ enabled: authed })
   const addMut = useAddCartItemMutation()
   const setMut = useSetCartItemMutation()
   const removeMut = useRemoveCartItemMutation()
 
-  const items: CartItem[] = authed
-    ? (serverQuery.data?.items ?? []).map((i) => ({
-        productId: i.productId,
-        name: i.name,
-        priceCents: i.priceCents,
-        imageUrl: i.imageUrl,
-        quantity: i.quantity,
-        stockQuantity: i.stockQuantity,
-      }))
-    : guest.items.map((i) => ({ ...i }))
+  const items: CartItem[] = auth.isLoading
+    ? []
+    : authed
+      ? (serverQuery.data?.items ?? []).map((i) => ({
+          productId: i.productId,
+          name: i.name,
+          priceCents: i.priceCents,
+          imageUrl: i.imageUrl,
+          quantity: i.quantity,
+          stockQuantity: i.stockQuantity,
+        }))
+      : guestItems.map((i) => ({ ...i }))
 
-  const isLoading = authed ? serverQuery.isLoading : false
+  const isLoading = auth.isLoading || (authed && serverQuery.isLoading)
 
   const add = useCallback(
     async (input: AddInput) => {
@@ -63,7 +68,7 @@ export function useCart(): UseCartResult {
         })
         return
       }
-      guest.add({
+      guestAdd({
         productId: input.productId,
         name: input.name,
         priceCents: input.priceCents,
@@ -72,7 +77,7 @@ export function useCart(): UseCartResult {
         quantity: input.quantity,
       })
     },
-    [addMut, authed, guest],
+    [addMut, authed, guestAdd],
   )
 
   const set = useCallback(
@@ -85,9 +90,9 @@ export function useCart(): UseCartResult {
         }
         return
       }
-      guest.set(productId, quantity)
+      guestSet(productId, quantity)
     },
-    [authed, guest, removeMut, setMut],
+    [authed, guestSet, removeMut, setMut],
   )
 
   const remove = useCallback(
@@ -96,9 +101,9 @@ export function useCart(): UseCartResult {
         await removeMut.mutateAsync({ productId })
         return
       }
-      guest.remove(productId)
+      guestRemove(productId)
     },
-    [authed, guest, removeMut],
+    [authed, guestRemove, removeMut],
   )
 
   return {

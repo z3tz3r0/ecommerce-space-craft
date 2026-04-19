@@ -82,4 +82,23 @@ describe("useCart facade", () => {
     await waitFor(() => expect(result.current.items).toHaveLength(1))
     expect(result.current.subtotalCents).toBe(600)
   })
+
+  it("reports isLoading and empty items while auth is resolving", () => {
+    mockUseAuth.mockReturnValue({
+      isSuccess: false,
+      isError: false,
+      isLoading: true,
+      data: undefined,
+    })
+    // Even with guest items in the store, the loading window should hide them
+    useGuestCartStore.getState().add({
+      productId: "p1",
+      name: "X-Wing",
+      priceCents: 100,
+      stockQuantity: 5,
+    })
+    const { result } = renderHook(() => useCart(), { wrapper })
+    expect(result.current.isLoading).toBe(true)
+    expect(result.current.items).toHaveLength(0)
+  })
 })
