@@ -59,3 +59,41 @@ func TestLoad_DefaultsPortAndEnvironment(t *testing.T) {
 	require.Equal(t, "8080", cfg.Port)
 	require.Equal(t, "dev", cfg.Environment)
 }
+
+func TestLoad_EnvironmentNormalization(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"dev", "dev"},
+		{"DEV", "dev"},
+		{"development", "dev"},
+		{"Development", "dev"},
+		{"prod", "production"}, // Render blueprint historically used "prod"
+		{"PROD", "production"},
+		{"production", "production"},
+		{"Production", "production"},
+		{"  prod  ", "production"}, // whitespace tolerated
+	}
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "postgres://u:p@h/d")
+			t.Setenv("ENVIRONMENT", tc.in)
+			t.Setenv("LOG_LEVEL", "info")
+			t.Setenv("CORS_ORIGINS", "http://localhost:5173")
+			cfg, err := config.Load()
+			require.NoError(t, err)
+			require.Equal(t, tc.want, cfg.Environment,
+				"every consumer compares Environment against the canonical 'production' literal — normalize at config.Load")
+		})
+	}
+}
+
+func TestLoad_InvalidEnvironment(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://u:p@h/d")
+	t.Setenv("ENVIRONMENT", "staging") // not yet supported
+	t.Setenv("LOG_LEVEL", "info")
+	t.Setenv("CORS_ORIGINS", "http://localhost:5173")
+	_, err := config.Load()
+	require.ErrorContains(t, err, "ENVIRONMENT")
+}
