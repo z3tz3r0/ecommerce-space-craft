@@ -10,10 +10,15 @@ export default defineConfig([
   {
     // catalog-filter, catalog-sort, catalog-search intentionally share the
     // "catalog" prefix as a domain namespace — suppress the false positive.
+    // auth-login, auth-signup, auth-logout share the "auth" namespace for
+    // the same reason.
     files: [
       "src/features/catalog-filter/**",
       "src/features/catalog-sort/**",
       "src/features/catalog-search/**",
+      "src/features/auth-login/**",
+      "src/features/auth-signup/**",
+      "src/features/auth-logout/**",
     ],
     rules: { "fsd/repetitive-naming": "off" },
   },
