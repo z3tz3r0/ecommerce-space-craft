@@ -4,9 +4,13 @@ import { cartKeys } from "./cart-keys"
 
 type ServerCart = components["schemas"]["Cart"]
 
+interface MutationContext {
+  prev?: ServerCart
+}
+
 export function useAddCartItemMutation() {
   const qc = useQueryClient()
-  return useMutation<void, Error, { productId: string; quantity: number }>({
+  return useMutation<void, Error, { productId: string; quantity: number }, MutationContext>({
     mutationFn: async ({ productId, quantity }) => {
       const { error } = await api.POST("/api/cart/items", {
         body: { productId, quantity },
@@ -42,8 +46,7 @@ export function useAddCartItemMutation() {
       return { prev }
     },
     onError: (_err, _vars, context) => {
-      const ctx = context as { prev?: ServerCart } | undefined
-      if (ctx?.prev) qc.setQueryData(cartKeys.server(), ctx.prev)
+      if (context?.prev) qc.setQueryData(cartKeys.server(), context.prev)
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: cartKeys.server() })
@@ -53,7 +56,7 @@ export function useAddCartItemMutation() {
 
 export function useSetCartItemMutation() {
   const qc = useQueryClient()
-  return useMutation<void, Error, { productId: string; quantity: number }>({
+  return useMutation<void, Error, { productId: string; quantity: number }, MutationContext>({
     mutationFn: async ({ productId, quantity }) => {
       const { error } = await api.PATCH("/api/cart/items/{productId}", {
         params: { path: { productId } },
@@ -74,8 +77,7 @@ export function useSetCartItemMutation() {
       return { prev }
     },
     onError: (_err, _vars, context) => {
-      const ctx = context as { prev?: ServerCart } | undefined
-      if (ctx?.prev) qc.setQueryData(cartKeys.server(), ctx.prev)
+      if (context?.prev) qc.setQueryData(cartKeys.server(), context.prev)
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: cartKeys.server() })
@@ -85,7 +87,7 @@ export function useSetCartItemMutation() {
 
 export function useRemoveCartItemMutation() {
   const qc = useQueryClient()
-  return useMutation<void, Error, { productId: string }>({
+  return useMutation<void, Error, { productId: string }, MutationContext>({
     mutationFn: async ({ productId }) => {
       const { error } = await api.DELETE("/api/cart/items/{productId}", {
         params: { path: { productId } },
@@ -104,8 +106,7 @@ export function useRemoveCartItemMutation() {
       return { prev }
     },
     onError: (_err, _vars, context) => {
-      const ctx = context as { prev?: ServerCart } | undefined
-      if (ctx?.prev) qc.setQueryData(cartKeys.server(), ctx.prev)
+      if (context?.prev) qc.setQueryData(cartKeys.server(), context.prev)
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: cartKeys.server() })
