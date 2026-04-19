@@ -53,6 +53,19 @@ describe("CartPage", () => {
     expect(screen.getByText("$2.00")).toBeInTheDocument()
   })
 
+  it("shows loading skeleton when isLoading is true", () => {
+    mockUseCart.mockReturnValue({
+      items: [],
+      subtotalCents: 0,
+      isLoading: true,
+      add: vi.fn(),
+      set: vi.fn(),
+      remove: vi.fn(),
+    })
+    render(<CartPage />, { wrapper })
+    expect(screen.getByTestId("cart-loading")).toBeInTheDocument()
+  })
+
   it("checkout button is disabled", () => {
     mockUseCart.mockReturnValue({
       items: [
