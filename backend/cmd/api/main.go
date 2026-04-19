@@ -46,7 +46,7 @@ func run() int {
 	}
 	defer pool.Close()
 
-	api := server.New("Spacecraft Store API", "0.1.0", logger, cfg.CORSOrigins)
+	api := server.New("Spacecraft Store API", "0.1.0", logger)
 
 	sess, stopSessionCleanup := session.New(pool, cfg.Environment == "production")
 	defer stopSessionCleanup()
@@ -63,9 +63,13 @@ func run() int {
 	cartSvc := cart.NewService(cartRepo)
 	cart.Register(api.Huma, cartSvc, authSvc, sess, logger)
 
+	// CORS wraps the mux at the http.Handler level so it sees every request
+	// — including OPTIONS preflights for endpoints that only register POST/
+	// PATCH/DELETE. Putting CORS inside the Huma middleware chain misses
+	// preflights because Huma middlewares only fire for registered operations.
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           sess.LoadAndSave(api.Mux),
+		Handler:           server.CORS(cfg.CORSOrigins)(sess.LoadAndSave(api.Mux)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
