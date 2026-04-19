@@ -1,7 +1,7 @@
 import { Link } from "react-router"
 import { useCart } from "@/entities/cart"
 import { useAuth } from "@/entities/user"
-import { LogoutButton } from "@/features/auth-logout"
+import { useLogoutHandler } from "@/features/auth-logout"
 import { Badge } from "@/shared/ui/badge"
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ import { Skeleton } from "@/shared/ui/skeleton"
 export function SiteHeader() {
   const auth = useAuth()
   const cart = useCart()
+  const { logout } = useLogoutHandler()
   const cartCount = cart.items.reduce((sum, i) => sum + i.quantity, 0)
 
   return (
@@ -46,8 +47,13 @@ export function SiteHeader() {
               <DropdownMenuItem asChild>
                 <Link to="/account">Account</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <LogoutButton />
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault()
+                  void logout()
+                }}
+              >
+                Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

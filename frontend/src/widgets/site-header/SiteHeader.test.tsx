@@ -11,6 +11,7 @@ vi.mock("@/entities/user", () => ({ useAuth: mockUseAuth }))
 vi.mock("@/entities/cart", () => ({ useCart: mockUseCart }))
 vi.mock("@/features/auth-logout", () => ({
   LogoutButton: () => <button type="button">Log out</button>,
+  useLogoutHandler: () => ({ logout: vi.fn(), isPending: false }),
 }))
 
 function wrapper({ children }: { children: ReactNode }) {

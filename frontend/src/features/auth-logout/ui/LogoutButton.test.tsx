@@ -1,34 +1,22 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import type { ReactNode } from "react"
-import { MemoryRouter } from "react-router"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { LogoutButton } from "./LogoutButton"
 
-const mutateAsync = vi.hoisted(() => vi.fn())
-vi.mock("@/entities/user", () => ({
-  useLogoutMutation: () => ({ mutateAsync, isPending: false }),
+const logout = vi.hoisted(() => vi.fn())
+vi.mock("../model/use-logout-handler", () => ({
+  useLogoutHandler: () => ({ logout, isPending: false }),
 }))
-
-function wrapper({ children }: { children: ReactNode }) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return (
-    <QueryClientProvider client={client}>
-      <MemoryRouter>{children}</MemoryRouter>
-    </QueryClientProvider>
-  )
-}
 
 describe("LogoutButton", () => {
   beforeEach(() => {
-    mutateAsync.mockReset()
+    logout.mockReset()
   })
 
-  it("calls logout mutation on click", async () => {
-    mutateAsync.mockResolvedValue(undefined)
-    render(<LogoutButton />, { wrapper })
+  it("calls logout handler on click", async () => {
+    logout.mockResolvedValue(undefined)
+    render(<LogoutButton />)
     await userEvent.click(screen.getByRole("button", { name: /log out/i }))
-    expect(mutateAsync).toHaveBeenCalled()
+    expect(logout).toHaveBeenCalled()
   })
 })
