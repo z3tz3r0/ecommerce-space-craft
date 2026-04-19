@@ -84,4 +84,3 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (User, error) {
 		UpdatedAt: rec.UpdatedAt,
 	}, nil
 }
-
