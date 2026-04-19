@@ -56,6 +56,15 @@ export default defineConfig([
     rules: { "fsd/insignificant-slice": "off" },
   },
   {
+    // features/require-auth is a route guard used by AccountPage and any
+    // future gated page. It lives in features/ because FSD forbids
+    // shared → entities imports (it depends on useAuth from entities/user).
+    // Currently only AccountPage consumes it — suppress until more gated
+    // pages arrive (checkout, orders, profile edit in later phases).
+    files: ["src/features/require-auth/**"],
+    rules: { "fsd/insignificant-slice": "off" },
+  },
+  {
     // Widget slices keep implementation files flat in the slice root rather
     // than inside segment dirs — suppress until a future phase reorganises.
     files: [

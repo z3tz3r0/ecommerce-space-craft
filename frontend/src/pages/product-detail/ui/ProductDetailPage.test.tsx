@@ -29,6 +29,10 @@ let mockState: { data?: Product; isLoading: boolean; isError: boolean } = {
   isError: false,
 }
 
+vi.mock("@/entities/cart", () => ({
+  useCart: () => ({ add: vi.fn() }),
+}))
+
 vi.mock("@/entities/product", async () => {
   const actual = await vi.importActual<typeof import("@/entities/product")>("@/entities/product")
   return {
