@@ -16,4 +16,8 @@ services:
       - key: LOG_LEVEL
         value: info
       - key: ENVIRONMENT
-        value: prod
+        # Either "prod" or "production" works (config.parseEnvironment
+        # normalises both), but "production" matches the canonical literal
+        # the Go code compares against — keeps the blueprint reading as
+        # intent without depending on the normaliser.
+        value: production

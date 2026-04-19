@@ -21,7 +21,6 @@ func Load() (Config, error) {
 	cfg := Config{
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		Port:        os.Getenv("PORT"),
-		Environment: os.Getenv("ENVIRONMENT"),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -30,9 +29,12 @@ func Load() (Config, error) {
 	if cfg.Port == "" {
 		cfg.Port = "8080"
 	}
-	if cfg.Environment == "" {
-		cfg.Environment = "dev"
+
+	env, err := parseEnvironment(os.Getenv("ENVIRONMENT"))
+	if err != nil {
+		return Config{}, err
 	}
+	cfg.Environment = env
 
 	lvl, err := parseLogLevel(os.Getenv("LOG_LEVEL"))
 	if err != nil {
@@ -43,6 +45,26 @@ func Load() (Config, error) {
 	cfg.CORSOrigins = parseOrigins(os.Getenv("CORS_ORIGINS"))
 
 	return cfg, nil
+}
+
+// parseEnvironment normalises the ENVIRONMENT value to one of two canonical
+// strings: "dev" or "production". This is what every consumer downstream
+// compares against (e.g. session.New checks `Environment == "production"`
+// to decide cookie SameSite/Secure).
+//
+// Both "prod" and "production" map to "production" — Render's blueprint
+// historically used "prod" while the Go code expected "production", and
+// that mismatch silently disabled the production cookie hardening. Pin
+// the canonical value here so the comparison is defined in one place.
+func parseEnvironment(s string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "", "dev", "development":
+		return "dev", nil
+	case "prod", "production":
+		return "production", nil
+	default:
+		return "", fmt.Errorf("config: ENVIRONMENT %q invalid (expected dev|production)", s)
+	}
 }
 
 // parseLogLevel accepts exactly the four canonical level names. We
