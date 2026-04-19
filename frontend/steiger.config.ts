@@ -30,6 +30,14 @@ export default defineConfig([
     rules: { "fsd/insignificant-slice": "off" },
   },
   {
+    // entities/user and entities/cart are introduced in Plan 2b ahead of
+    // their consumers (auth pages + cart facade arrive in later tasks).
+    // The "no references" warning is structurally correct but premature —
+    // suppress until the slice graph is complete.
+    files: ["src/entities/user/**", "src/entities/cart/**"],
+    rules: { "fsd/insignificant-slice": "off" },
+  },
+  {
     // Widget slices keep implementation files flat in the slice root rather
     // than inside segment dirs — suppress until a future phase reorganises.
     files: [
