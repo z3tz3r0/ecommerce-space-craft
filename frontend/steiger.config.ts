@@ -38,6 +38,17 @@ export default defineConfig([
     rules: { "fsd/insignificant-slice": "off" },
   },
   {
+    // features/auth-* slices are introduced ahead of their consumers
+    // (LoginPage / SignupPage / Account widgets arrive in Task 11).
+    // Suppress fsd/insignificant-slice until then.
+    files: [
+      "src/features/auth-login/**",
+      "src/features/auth-signup/**",
+      "src/features/auth-logout/**",
+    ],
+    rules: { "fsd/insignificant-slice": "off" },
+  },
+  {
     // Widget slices keep implementation files flat in the slice root rather
     // than inside segment dirs — suppress until a future phase reorganises.
     files: [
