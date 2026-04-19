@@ -29,8 +29,10 @@ dev: ## Run dev servers in parallel
 	$(MAKE) -j 2 dev-backend dev-frontend
 
 .PHONY: dev-backend
-dev-backend: ## Run the Go API locally
-	cd backend && go run ./cmd/api
+dev-backend: ## Run the Go API locally (loads backend/.env if present)
+	cd backend && \
+		if [ -f .env ]; then set -a; . ./.env; set +a; fi && \
+		go run ./cmd/api
 
 .PHONY: dev-frontend
 dev-frontend: ## Run the Vite dev server
