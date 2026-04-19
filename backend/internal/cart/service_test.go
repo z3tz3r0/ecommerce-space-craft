@@ -95,6 +95,19 @@ func TestService_Add_RepoError_ProductNotFound_PassesThrough(t *testing.T) {
 	require.ErrorIs(t, err, cart.ErrProductNotFound)
 }
 
+func TestService_Add_RepoError_OverStock_PassesThrough(t *testing.T) {
+	// Repository.AddItem now refuses (ErrOverStock) when there's no
+	// headroom — including the stock=0 case that previously produced a
+	// quantity=0 cart row. Service must surface that error untouched.
+	svc := cart.NewServiceFake(t, cart.FakeRepoAdapter{
+		AddItem: func(context.Context, uuid.UUID, uuid.UUID, int32) (cart.Item, error) {
+			return cart.Item{}, cart.ErrOverStock
+		},
+	})
+	_, err := svc.Add(context.Background(), uuid.New(), uuid.New(), 1)
+	require.ErrorIs(t, err, cart.ErrOverStock)
+}
+
 func TestService_Set_NonPositiveQuantity_Returns_ErrInvalidQuantity(t *testing.T) {
 	svc := cart.NewServiceFake(t, cart.FakeRepoAdapter{
 		SetItem: func(context.Context, uuid.UUID, uuid.UUID, int32) (cart.Item, error) {

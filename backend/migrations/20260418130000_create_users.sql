@@ -11,4 +11,6 @@ CREATE TABLE users (
 
 -- +goose Down
 DROP TABLE users;
-DROP EXTENSION IF EXISTS citext;
+-- Intentionally NOT dropping citext: this migration may not own the
+-- extension (it can pre-exist or be referenced by tables added later).
+-- Leaving it installed is safe; dropping it could break unrelated columns.

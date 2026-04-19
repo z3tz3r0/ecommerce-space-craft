@@ -48,10 +48,16 @@ func (s *Service) Signup(ctx context.Context, email, password string) (User, err
 // prevent user enumeration. Repository failures unrelated to lookup
 // (e.g. DB outage) propagate so the operator sees a real 500 instead of
 // a misleading "invalid credentials".
+//
+// On the user-not-found path we still hash against a precomputed dummy to
+// keep response time symmetric — argon2id at our params costs ~50–200ms,
+// and skipping it would otherwise make user-not-found and wrong-password
+// trivially distinguishable by external timing measurement.
 func (s *Service) Login(ctx context.Context, email, password string) (User, error) {
 	rec, err := s.repo.GetUserByEmail(ctx, strings.ToLower(strings.TrimSpace(email)))
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
+			_, _ = verifyPassword(password, dummyHash)
 			return User{}, ErrInvalidCredentials
 		}
 		return User{}, fmt.Errorf("auth: login lookup: %w", err)

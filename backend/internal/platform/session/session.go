@@ -24,8 +24,16 @@ type Manager = *scs.SessionManager
 // expired sessions from Postgres; the returned cleanup func calls
 // store.StopCleanup() so that goroutine exits cleanly when the server does.
 //
-// `secureCookie` toggles the Secure flag on the session cookie: true in
-// production (HTTPS), false in local dev against Vite's http://localhost:5173.
+// `secureCookie` controls cross-site cookie behaviour:
+//
+//   - true  → production: Secure=true + SameSite=None. Required for the
+//     Vercel frontend (vercel.app) to send the cookie on cross-site fetches
+//     to the Render backend (onrender.com). SameSite=Lax would silently
+//     drop the cookie on every cross-site XHR, breaking every authenticated
+//     endpoint in production.
+//   - false → local dev: Secure=false + SameSite=Lax. localhost:5173↔
+//     localhost:8080 is same-site, so Lax suffices, and SameSite=None
+//     requires Secure (browsers reject None-without-Secure).
 func New(pool *pgxpool.Pool, secureCookie bool) (Manager, func()) {
 	store := pgxstore.New(pool)
 	s := scs.New()
@@ -36,6 +44,10 @@ func New(pool *pgxpool.Pool, secureCookie bool) (Manager, func()) {
 	s.Cookie.Path = "/"
 	s.Cookie.HttpOnly = true
 	s.Cookie.Secure = secureCookie
-	s.Cookie.SameSite = http.SameSiteLaxMode
+	if secureCookie {
+		s.Cookie.SameSite = http.SameSiteNoneMode
+	} else {
+		s.Cookie.SameSite = http.SameSiteLaxMode
+	}
 	return s, store.StopCleanup
 }
