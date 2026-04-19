@@ -24,6 +24,12 @@ export function LoginForm() {
     setServerError(null)
     try {
       await login.mutateAsync(values)
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : "Login failed")
+      return
+    }
+    // Login succeeded — guest cart merge is best-effort, never blocks navigation.
+    try {
       const guest = useGuestCartStore.getState()
       if (guest.items.length > 0) {
         await merge.mutateAsync(
@@ -31,10 +37,11 @@ export function LoginForm() {
         )
         guest.clear()
       }
-      navigate("/")
-    } catch (err) {
-      setServerError(err instanceof Error ? err.message : "Login failed")
+    } catch {
+      // Swallow: user is already authenticated, surfacing a merge error here
+      // would mislead the UX. Phase 4 polish may add a toast.
     }
+    navigate("/")
   }
 
   return (
