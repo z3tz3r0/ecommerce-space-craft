@@ -27,6 +27,12 @@ export function useAddCartItemMutation() {
           idx === -1
             ? [
                 ...prevItems,
+                // Placeholder for optimistic add — name/price/stock fill in when
+                // onSettled triggers a refetch. stockQuantity uses the requested
+                // quantity as the upper bound; concurrent adds before settle can
+                // clamp against this stale value rather than real stock. Acceptable
+                // for the current single-button add UX; revisit if rapid concurrent
+                // adds become possible.
                 {
                   productId,
                   name: "…",

@@ -18,6 +18,11 @@ export function useMergeCartMutation() {
       if (error) throw new Error(error.detail ?? error.title ?? "Cart merge failed")
     },
     onSettled: () => {
+      // Invalidates even when mutationFn early-returned for empty input.
+      // The redundant refetch on no-op merge is benign (login already triggers
+      // its own /me query); keeping the invalidation unconditional avoids the
+      // trap of moving it into a success branch and silently breaking the
+      // real-merge path.
       qc.invalidateQueries({ queryKey: cartKeys.server() })
     },
   })
