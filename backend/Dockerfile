@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM golang:1.25-alpine AS build
+FROM golang:1.26-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
@@ -8,7 +8,7 @@ COPY . .
 ENV CGO_ENABLED=0
 RUN go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api
 
-FROM golang:1.25-alpine AS goose
+FROM golang:1.26-alpine AS goose
 RUN go install github.com/pressly/goose/v3/cmd/goose@v3.27.0
 
 # Runtime: Alpine (~8MB) — distroless/base actually ships without /bin/sh, so
