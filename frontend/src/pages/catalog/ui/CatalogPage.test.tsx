@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { render, screen, within } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import type { ReactNode } from "react"
 import { MemoryRouter } from "react-router"
@@ -96,7 +96,7 @@ describe("CatalogPage", () => {
     render(<CatalogPage />, { wrapper: makeWrapper(["/products?sort=price-asc"]) })
     const links = screen.getAllByRole("link")
     const productLinks = links.filter((l) => l.getAttribute("href")?.startsWith("/products/"))
-    const names = productLinks.map((l) => within(l).getByRole("heading").textContent)
+    const names = productLinks.map((l) => l.getAttribute("aria-label"))
     // Falcon ($50) < X-Wing ($100) < TIE Fighter ($200)
     expect(names).toEqual(["Falcon", "X-Wing", "TIE Fighter"])
   })
