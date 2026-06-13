@@ -52,7 +52,7 @@ jobs:
           go-version: "1.26"
           cache-dependency-path: backend/go.sum
       - name: install sqlc
-        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
       - name: regenerate sqlc
         run: cd backend && sqlc generate
       - name: regenerate openapi
