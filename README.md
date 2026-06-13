@@ -4,14 +4,12 @@ A fun-project e-commerce app for browsing spacecraft. Being rebuilt from scratch
 
 ## Status
 
-**Phase 0 — Foundation: ✓ deployed**
-Backend (Plan 0a) is a Go + Huma + Postgres service on Render, seeded with 15 spacecraft. Frontend (Plan 0b) is a Bun + Vite + React 19 SPA on Vercel rendering a `HomePage` that fetches products via an OpenAPI-generated typed client.
+**Phases 0–2 shipped & deployed.** Foundation (Go + Huma + Postgres on Render · Bun + Vite + React 19 SPA on Vercel), Catalog (list, category filter, sort, search, product detail, featured section), and Identity + Cart (Postgres sessions, argon2id auth, guest↔server cart with merge-on-login).
 
-**Phase 1 — Catalog: next**
-Product list with category filter, sort, search; product detail page; featured section. Public, no auth.
+**Phase 3 — Checkout & Orders: next** (design spec only · Stripe test mode, orders table, order history). No checkout code yet.
 
-Remaining phases: catalog features → auth + persistent cart → checkout (Stripe test) + coupons → styling pass + spacecraft fun layer → engagement → admin.
-See `docs/superpowers/specs/2026-04-17-phase-0-foundation-design.md` for the full roadmap.
+Remaining phases: checkout (Stripe test) + coupons → styling pass + spacecraft fun layer → engagement → admin.
+See `docs/` for the current architecture documentation.
 
 ## Live URLs
 
@@ -26,7 +24,7 @@ Free-tier Render spins down after ~15 min idle; the first request after sleep ca
 
 ## Tech stack
 
-**Backend** — Go 1.25 · [Huma v2](https://huma.rocks) (HTTP + auto-generated OpenAPI) · [sqlc](https://sqlc.dev) (typed queries from SQL) · pgx/v5 · [goose](https://github.com/pressly/goose) (migrations) · `slog` (logging) · [testify](https://github.com/stretchr/testify) (tests) · Postgres on [Neon](https://neon.tech)
+**Backend** — Go 1.26 · [Huma v2](https://huma.rocks) (HTTP + auto-generated OpenAPI) · [sqlc](https://sqlc.dev) (typed queries from SQL) · pgx/v5 · [goose](https://github.com/pressly/goose) (migrations) · `slog` (logging) · [testify](https://github.com/stretchr/testify) (tests) · Postgres on [Neon](https://neon.tech)
 
 **Infrastructure** — Docker multi-stage (Alpine runtime) · Render (free tier, auto-deploy on push) · Vercel (free tier, SPA static hosting) · GitHub Actions (lint + test + codegen-drift + build) · [Lefthook](https://github.com/evilmartians/lefthook) (Git hooks manager — runs pre-commit checks) · `golangci-lint`
 
@@ -36,7 +34,7 @@ Free-tier Render spins down after ~15 min idle; the first request after sleep ca
 
 ### Prerequisites
 
-- Go 1.25+
+- Go 1.26+
 - A Neon Postgres database (https://neon.tech) — copy its `DATABASE_URL`
 - Optional dev tools (auto-installed on first `make` target): `sqlc`, `goose`, `golangci-lint`, `lefthook`
 

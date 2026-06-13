@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Stack
 
-- **Backend** (`backend/`) — Go 1.23+ + [Huma v2](https://huma.rocks) (OpenAPI generation on top of stdlib `net/http` via the `humago` adapter) + [sqlc](https://sqlc.dev) (SQL → typed Go) + `pgx/v5` (Postgres driver + pool) + [goose](https://github.com/pressly/goose) migrations against [Neon](https://neon.tech) Postgres.
+- **Backend** (`backend/`) — Go 1.26+ + [Huma v2](https://huma.rocks) (OpenAPI generation on top of stdlib `net/http` via the `humago` adapter) + [sqlc](https://sqlc.dev) (SQL → typed Go) + `pgx/v5` (Postgres driver + pool) + [goose](https://github.com/pressly/goose) migrations against [Neon](https://neon.tech) Postgres.
 - **Frontend** (`frontend/`) — [Bun](https://bun.sh) (runtime, package manager, test runner) + [Vite](https://vitejs.dev) + React 19 + TypeScript + Tailwind v4 + [shadcn/ui](https://ui.shadcn.com) primitives. Source organised as [Feature-Sliced Design](https://feature-sliced.design) (FSD), enforced by [Steiger](https://github.com/feature-sliced/steiger).
 - **Sessions:** [`alexedwards/scs/v2`](https://github.com/alexedwards/scs) + `pgxstore` (cookie sessions persisted in Postgres).
 - **Password hashing:** [`alexedwards/argon2id`](https://github.com/alexedwards/argon2id) tuned for Render free-tier CPU (64 MB memory / 1 iteration / 2 parallelism).
@@ -100,7 +100,7 @@ Cross-imports are downward only. Steiger flags violations at `make lint`. Cross-
 - React Hook Form + Zod (via `@hookform/resolvers`) — forms.
 - `sonner` — toast notifications.
 
-The cart facade (`entities/cart/api/use-cart.ts`) routes guest↔server reads/writes based on auth state and triggers a `MergeItems` call on signup/login.
+The cart facade (`entities/cart/lib/cart-facade.ts`) routes guest↔server reads/writes based on auth state and triggers a `MergeItems` call on signup/login.
 
 ## Conventions
 
@@ -113,8 +113,6 @@ The cart facade (`entities/cart/api/use-cart.ts`) routes guest↔server reads/wr
 - **`MustCurrentUser`** (not `CurrentUser`) panics by design when the auth context is missing — only call it inside `RequireAuth`-protected handlers.
 
 ## Workflow
-
-For multi-task features, use the `superpowers:subagent-driven-development` skill to dispatch a fresh implementer + spec-reviewer + quality-reviewer per task.
 
 **Per-PR cycle:**
 
@@ -129,7 +127,5 @@ For multi-task features, use the `superpowers:subagent-driven-development` skill
 
 ## Useful pointers
 
-- `docs/superpowers/specs/` — design docs per phase (read these before touching a phase).
-- `docs/superpowers/plans/` — task-by-task implementation plans.
 - `backend/openapi.json` — source of truth for the API contract; the FE client is generated from it.
 - `~/.claude/projects/-home-z3tz3r0-Projects-ecommerce-space-craft/memory/` — durable memories (phase status, deployed URLs, Render quirks, workflow preferences, CodeRabbit cycle).
